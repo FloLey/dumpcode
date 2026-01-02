@@ -329,10 +329,6 @@ def main():
             for line in tree_lines_collected:
                 outfile.write(line + "\n")
 
-            outfile.write(f"\n--- Tree Summary ---\n")
-            summary_part = f", {file_count_global} files listed" if not args.dir_only else ""
-            outfile.write(f"{dir_count_global} directories{summary_part}.\n")
-            outfile.write(f"Exclusion patterns used: {len(excluded_patterns)}\n")
 
             # 3. File Contents
             if not args.structure_only:

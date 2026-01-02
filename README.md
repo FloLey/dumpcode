@@ -220,10 +220,6 @@ project/
 │   └── utils.py
 └── README.md
 
---- Tree Summary ---
-1 directories, 3 files listed.
-Exclusion patterns used: 9
-
 --- File Contents ---
 
 --- File: src/main.py ---
