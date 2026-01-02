@@ -17,15 +17,15 @@ A Python CLI tool for generating comprehensive codebase dumps with auto-incremen
 ### From GitHub (Recommended)
 
 ```bash
-pip install git+https://github.com/yourusername/dumpcode-repo.git
+pip install git+https://github.com/FloLey/dumpcode.git
 ```
 
 ### Local Development Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dumpcode-repo.git
-cd dumpcode-repo
+git clone https://github.com/FloLey/dumpcode.git
+cd dumpcode
 
 # Install in editable mode
 pip install -e .
@@ -36,7 +36,7 @@ pip install -e .
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install git+https://github.com/yourusername/dumpcode-repo.git
+pip install git+https://github.com/FloLey/dumpcode.git
 ```
 
 ## Usage
