@@ -1,33 +1,112 @@
-"""Constants for the DumpCode application."""
+"""Constants and default configuration profiles for DumpCode."""
 
-# --- Constants ---
-PREFIX_MIDDLE = "├── "
-PREFIX_LAST = "└── "
-PREFIX_PASS = "│   "
-PREFIX_EMPTY = "    "
-
-# Config file
 CONFIG_FILENAME = ".dump_config.json"
+
+DEFAULT_PRE = [
+    "Act as an expert software developer and system architect."
+]
+DEFAULT_POST = [
+    "Analyze the provided codebase and provide a high-level summary of its purpose and architecture."
+]
 
 DEFAULT_PROFILES = {
     "readme": {
         "description": "Generate or Update README.md based on actual code logic",
-        "pre": "Act as a Senior Technical Writer. Analyze the codebase structure and logic to write a comprehensive README.md.\n\nYour goal is to accurately document:\n1. The Project Title & Description (One-liner).\n2. Key Features (Derived from actual function/class capabilities).\n3. Installation Instructions (Detect requirements.txt, pyproject.toml, etc).\n4. Usage Examples (Based on CLI arguments or main entry points).\n5. Configuration Options (Explain .dump_config.json structure).\n\nDo not hallucinate features. Only document what is present in the code.",
+        "pre": [
+            "Act as a Senior Technical Writer. Analyze the codebase structure and logic to write a comprehensive README.md.",
+            "",
+            "Your goal is to accurately document:",
+            "1. The Project Title & Description (One-liner).",
+            "2. Key Features (Derived from actual function/class capabilities).",
+            "3. Installation Instructions (Detect requirements.txt, pyproject.toml, etc).",
+            "4. Usage Examples (Based on CLI arguments or main entry points).",
+            "5. Configuration Options (Explain .dump_config.json structure).",
+            "",
+            "Do not hallucinate features. Only document what is present in the code."
+        ],
         "post": "Output the result in raw Markdown format suitable for direct copy-pasting into README.md."
     },
     "cleanup": {
         "description": "Clean code: formatting, docstrings, unused imports",
-        "pre": "Act as a Senior Python Developer and Code Reviewer. Your task is to perform a 'Spring Cleaning' on the codebase.\n\nFocus strictly on:\n1. Removing unused imports.\n2. Removing commented-out code (dead code).\n3. Removing trivial comments (e.g., '# increments i').\n4. Adding or fixing PEP 257 docstrings for all modules, classes, and functions.\n5. Enforcing PEP 8 styling (naming conventions, layout).\n\nCRITICAL: Do not change the logic or behavior of the code. Only improve readability and maintainability.",
-        "post": "Provide the refactored code files in full. If a file requires no changes, state 'No changes needed for [filename]'."
+        "pre": [
+            "Act as a Senior Python Developer and Code Reviewer. Your task is to perform a 'Spring Cleaning' on the codebase.",
+            "",
+            "Your goal is strict technical correctness, NOT subjective preference.",
+            "1. Remove unused imports and dead code (commented-out blocks).",
+            "2. Remove trivial comments (e.g., '# increments i').",
+            "3. Fix objective PEP 8 layout violations (indentation, spacing).",
+            "4. Add MISSING docstrings. Do NOT rewrite existing docstrings unless they are factually incorrect.",
+            "",
+            "CRITICAL: Be conservative. If a file is already clean, do NOT make trivial changes just to generate a diff. If no objective errors exist, state 'No changes needed'.",
+            "",
+            "Note: DumpCode itself was developed using this exact cleanup profile in a self-referential loop with Gemini. Each iteration used DumpCode to analyze the DumpCode codebase, creating a virtuous cycle of self-improvement."
+        ],
+        "post": "Provide the changes in unified diff format for each file. If a file requires no changes, state 'No changes needed for [filename]'. Summarize the number of docstrings added and PEP 8 violations fixed per file. Format the output as a developer specification in Markdown with clear sections for each file."
     },
     "optimize": {
         "description": "Identify bottlenecks and suggest performance improvements",
-        "pre": "Act as a Lead Performance Engineer. Analyze the provided codebase for performance bottlenecks.\n\nLook for:\n1. Algorithmic inefficiencies (High Big-O complexity).\n2. I/O bottlenecks (File operations, Network calls).\n3. Memory leaks or excessive memory usage.\n4. Inefficient string concatenations or loop logic.\n\nFor every issue found, explain *why* it is slow.",
+        "pre": [
+            "Act as a Lead Performance Engineer. Analyze the provided codebase for performance bottlenecks.",
+            "",
+            "Look for:",
+            "1. Algorithmic inefficiencies (High Big-O complexity, nested loops on large data).",
+            "2. I/O bottlenecks (File operations, Network calls inside loops).",
+            "3. Memory leaks or excessive memory usage.",
+            "4. Inefficient string concatenations in large loops.",
+            "",
+            "CRITICAL: Avoid premature optimization. Do not suggest micro-optimizations (e.g., replacing 'format' with 'f-strings') unless the code is clearly in a performance-critical hot path. If the performance gain is negligible, do not report it.",
+            "If no significant bottlenecks exist, explicitly state 'No optimizations needed'."
+        ],
         "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation."
     },
-    "plan": {
-        "description": "Create or Update PLAN.md (Project Roadmap & Spec)",
-        "pre": "Act as a Product Manager and Software Architect. Analyze the current state of the codebase to create a master specification file named 'PLAN.md'.\n\nThis file should serve as the source of truth for the project. Include:\n1. **Current Status**: What is currently implemented and working?\n2. **Architecture**: High-level overview of how modules interact.\n3. **Roadmap**: A logical step-by-step plan for future development.\n4. **Missing Features**: Gaps between the implied goal and current code.\n5. **Tech Debt**: Areas that need refactoring (identified from the code).",
-        "post": "Output the content in Markdown format. This will be saved as PLAN.md and used as context for future prompts."
+    "architect": {
+        "description": "Generate a Project Roadmap & Specification (PLAN.md)",
+        "pre": [
+            "Act as a Product Manager and Software Architect.",
+            "Analyze the current state of the codebase to create a master specification file named 'PLAN.md'.",
+            "This file should serve as the source of truth for the project.",
+            "",
+            "Include:",
+            "1. **Current Status**: What is currently implemented and working?",
+            "2. **Architecture**: High-level overview of how modules interact.",
+            "3. **Roadmap**: A logical step-by-step plan for future development.",
+            "4. **Missing Features**: Gaps between the implied goal and current code.",
+            "5. **Tech Debt**: Areas that need refactoring (identified from the code)."
+        ],
+        "post": "Output the content in Markdown format. This will be used to update the project PLAN.md."
+    },
+    "plan-next": {
+        "description": "Sync PLAN.md with code; stop if finished",
+        "pre": [
+            "Act as a Software Project Controller and Architect.",
+            "Your goal is to synchronize the existing 'PLAN.md' with the actual state of the codebase.",
+            "",
+            "STRICT RULES:",
+            "1. COMPARE the provided code against the current tasks in PLAN.md.",
+            "2. MARK finished tasks as ✅ [DONE] in the updated plan.",
+            "3. REMOVE or REVISE tasks that the code has rendered obsolete.",
+            "4. STRICT COMPLETION: If all tasks are marked as ✅ [DONE] and no critical stability issues exist, state 'PROJECT MILESTONES COMPLETE'.",
+            "5. NO FEATURE CREEP: Do not suggest new features. If the project is finished, do not create a next milestone. Only if tasks remain, group them into exactly one logical next milestone with technical specs."
+        ],
+        "post": [
+            "Output the updated PLAN.md in clear Markdown.",
+            "If the project is complete, output the finished PLAN.md followed by a summary of the project's current stable state.",
+            "If tasks remain, follow the plan with a 'Developer Specification' section for the very next task.",
+            "Ensure codeblocks are syntactically correct."
+        ]
+    },
+    "refactor": {
+        "description": "Suggest architectural improvements and code cleanups",
+        "pre": [
+            "Act as a Senior Software Architect.",
+            "Review the code for 'code smells', structural weaknesses, and SOLID principle violations.",
+            "Look for opportunities to reduce complexity, improve decoupling, and enhance testability.",
+            "",
+            "CRITICAL RULES:",
+            "1. Avoid Over-engineering: Do not suggest complex design patterns (like Abstract Factories) for simple, linear logic.",
+            "2. Prioritize Readability: If a refactor makes the code 'smarter' but harder to read, do NOT suggest it.",
+            "3. If the current implementation is simple, effective, and maintainable, explicitly state 'No architectural changes needed'."
+        ],
+        "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes."
     }
 }
