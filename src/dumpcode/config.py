@@ -87,9 +87,9 @@ def load_or_create_config(
                 
             if not validate_config(loaded_config):
                 if logger:
-                    logger.warning(f"Config file has invalid structure, using defaults")
+                    logger.warning("Config file has invalid structure, using defaults")
                 else:
-                    print(f"[Warning] Config file has invalid structure, using defaults")
+                    print("[Warning] Config file has invalid structure, using defaults")
             else:
                 config.update(loaded_config)
                 if "profiles" in loaded_config:
