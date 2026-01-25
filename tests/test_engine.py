@@ -7,7 +7,6 @@ from src.dumpcode.engine import DumpEngine
 
 def test_engine_output_sandwich(tmp_path):
     """Test the complete sandwich output structure."""
-    # Setup dummy project
     src = tmp_path / "src"
     src.mkdir()
     (src / "hello.py").write_text("print('hi')")

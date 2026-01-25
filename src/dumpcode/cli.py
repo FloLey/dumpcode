@@ -61,7 +61,7 @@ def parse_arguments_with_profiles(start_path: Path) -> argparse.Namespace:
     profile_group = parser.add_argument_group("LLM Prompt Profiles")
 
     built_in_flags: List[str] = []
-    for action in parser._actions:
+    for action in parser._actions:  # noqa: SLF001
         built_in_flags.extend(action.option_strings)
 
     for profile_name, profile_data in profiles.items():

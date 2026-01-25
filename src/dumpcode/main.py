@@ -104,7 +104,9 @@ def main() -> None:
 
     Initialize scanning, process CLI arguments, and invoke the DumpEngine.
     """
-    raw_path = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else "."
+    # PEP 8 Fix: Wrapped long line
+    has_arg = len(sys.argv) > 1 and not sys.argv[1].startswith("-")
+    raw_path = sys.argv[1] if has_arg else "."
     start_path = Path(raw_path).resolve()
 
     if not start_path.is_dir():
