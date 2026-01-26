@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "dumpcode"
 version = "1.2.0"
 description = "Codebase dumper with auto-versioning, dynamic profiles, and OSC52 clipboard support."
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 authors = [
     {name = "Florent Lejoly", email = "florent.lejoly@gmail.com"}
 ]
@@ -15,11 +15,10 @@ license = "MIT"
 license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Operating System :: OS Independent",
 ]
 dependencies = [

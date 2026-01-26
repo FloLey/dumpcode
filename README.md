@@ -135,7 +135,7 @@ pip install .
 ```
 
 ### Requirements
-*   **Python 3.7+**
+*   **Python 3.9+**
 *   `pathspec`: For gitignore parsing.
 *   `tiktoken` (Optional): For precise OpenAI token counting. (Install via `pip install .[token-counting]`)
 
