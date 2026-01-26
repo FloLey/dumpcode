@@ -1,0 +1,14 @@
+[run]
+branch = True
+source = src/dumpcode
+omit =
+    tests/*
+    **/__init__.py
+
+[report]
+show_missing = True
+skip_covered = False
+precision = 1
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:

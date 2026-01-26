@@ -139,6 +139,12 @@ pip install .
 *   `pathspec`: For gitignore parsing.
 *   `tiktoken` (Optional): For precise OpenAI token counting. (Install via `pip install .[token-counting]`)
 
+### Development
+For development and testing, install with dev dependencies:
+```bash
+pip install -e ".[token-counting,dev]"
+```
+
 ---
 
 ## Usage Examples
@@ -247,6 +253,32 @@ DumpCode's development followed this same recursive pattern:
 4. **Meta-Configuration**: The `--change-profile` feature emerged from needing to update prompts without manual JSON editing
 
 This created a virtuous cycle: DumpCode improved itself by being used on itself, demonstrating its own value in real-time.
+
+## Testing & Coverage
+
+### Running Tests
+```bash
+# Run all tests
+pytest tests/
+
+# Run tests with coverage report
+pytest --cov=src/dumpcode --cov-report=term-missing
+
+# Generate HTML coverage report
+pytest --cov=src/dumpcode --cov-report=html --cov-report=xml --cov-report=term-missing
+```
+
+### Coverage Reports
+- **Terminal**: Shows missed lines with `--cov-report=term-missing`
+- **HTML**: Detailed browser report at `htmlcov/index.html`
+- **XML**: Machine-readable `coverage.xml` for CI tools
+
+### CI/CD
+GitHub Actions runs tests with coverage on every push and PR:
+- Tests across Python 3.9-3.12
+- Minimum 85% coverage requirement
+- HTML coverage reports uploaded as artifacts
+- Linting with ruff and type checking with mypy
 
 ## License
 
