@@ -30,6 +30,12 @@ def validate_config(config: Dict) -> bool:
     Returns:
         True if config has valid structure, False otherwise
     """
+    if "version" not in config:
+        return False
+
+    if not isinstance(config["version"], int):
+        return False
+    
     profiles = config.get("profiles")
     if not isinstance(profiles, dict):
         return False
@@ -37,7 +43,10 @@ def validate_config(config: Dict) -> bool:
     for name, body in profiles.items():
         if not isinstance(body, dict):
             return False
-        if not any(key in body for key in ["description", "pre", "post"]):
+        
+        valid_keys = {"description", "pre", "post", "run_commands"}
+        
+        if not any(key in body for key in valid_keys):
             return False
     
     return True

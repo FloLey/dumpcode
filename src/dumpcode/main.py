@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .cli import parse_arguments_with_profiles
 from .config import interactive_init, load_or_create_config
@@ -99,21 +99,28 @@ def run_dump(args: argparse.Namespace, config: Dict[str, Any], start_path: Path)
     engine.run()
 
 
-def main() -> None:
+def main(args_list: Optional[list[str]] = None) -> None:
     """Primary application entry point.
 
     Initialize scanning, process CLI arguments, and invoke the DumpEngine.
-    """
-    # PEP 8 Fix: Wrapped long line
-    has_arg = len(sys.argv) > 1 and not sys.argv[1].startswith("-")
-    raw_path = sys.argv[1] if has_arg else "."
-    start_path = Path(raw_path).resolve()
 
+    Args:
+        args_list: Optional list of command-line arguments. If None, uses sys.argv[1:].
+    """
+    if args_list is None:
+        args_list = sys.argv[1:]
+    
+    start_path = Path(".").resolve()
+    if args_list and not args_list[0].startswith("-"):
+        start_path = Path(args_list[0]).resolve()
+        args_list = args_list[1:]
+    
     if not start_path.is_dir():
         print(f"Error: Invalid directory '{start_path}'")
         return
 
-    args = parse_arguments_with_profiles(start_path)
+    # Parse arguments with the start path
+    args = parse_arguments_with_profiles(start_path, args_list)
 
     if args.init:
         interactive_init(start_path)

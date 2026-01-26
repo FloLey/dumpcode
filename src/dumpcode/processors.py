@@ -72,10 +72,30 @@ def truncate_text_lines(file_path: Path, limit: int = 5) -> str:
         A string containing the truncated lines and a marker.
     """
     try:
+        lines = []
+        has_more = False
+        
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = [next(f) for _ in range(limit)]
-        return "".join(lines) + f"\n[... truncated {file_path.suffix} ...]"
-    except (StopIteration, Exception):
+            for _ in range(limit):
+                line = f.readline()
+                if not line:
+                    break
+                lines.append(line)
+            
+            # Check if there is more content while file is still open
+            if len(lines) == limit and f.readline():
+                has_more = True
+        
+        if not lines:
+            return f"[Data snippet from {file_path.name}]"
+        
+        content = "".join(lines)
+        
+        if has_more:
+            return content + f"\n[... truncated {file_path.suffix} ...]"
+        
+        return content
+    except Exception:
         return f"[Data snippet from {file_path.name}]"
 
 CONTENT_PROCESSORS: Dict[str, Callable[[Path], str]] = {

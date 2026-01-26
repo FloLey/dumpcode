@@ -4,8 +4,9 @@ import base64
 import logging
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 def estimate_tokens(text: str, logger: Optional[logging.Logger] = None) -> int:
@@ -110,3 +111,79 @@ def setup_logger(name: str, verbose: bool = False) -> logging.Logger:
     
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     return logger
+
+
+@dataclass
+class CommandResult:
+    """Container for the results of an external shell command execution.
+
+    Attributes:
+        success: Whether the subprocess ran without crashing.
+        exit_code: The return code from the shell.
+        output: Formatted string containing stdout and stderr.
+        error: Optional string containing the exception message if execution failed.
+    """
+    success: bool
+    exit_code: int
+    output: str
+    error: Optional[str] = None
+    
+    @classmethod
+    def from_success(cls, exit_code: int, stdout: str, stderr: str) -> 'CommandResult':
+        """Create a CommandResult from successful execution."""
+        output_lines = [
+            f"Exit Code: {exit_code}",
+        ]
+        
+        if stdout:
+            output_lines.extend(["STDOUT:", stdout.strip()])
+        
+        if stderr:
+            output_lines.extend(["STDERR:", stderr.strip()])
+            
+        output = "\n".join(output_lines)
+        return cls(success=True, exit_code=exit_code, output=output)
+    
+    @classmethod
+    def from_failure(cls, error: str) -> 'CommandResult':
+        """Create a CommandResult from failed execution."""
+        return cls(success=False, exit_code=-1, output="", error=error)
+    
+    def formatted_output(self, command: str) -> str:
+        """Get the formatted output block with command header."""
+        if self.success:
+            return f"--- COMMAND: {command} ---\n{self.output}\n--------------------------"
+        else:
+            return f"--- COMMAND: {command} ---\n[Execution Failed]: {self.error}\n--------------------------"
+
+
+def run_shell_command(command: str) -> Tuple[int, str]:
+    """Execute a shell command and return exit code and formatted output.
+    
+    Args:
+        command: The shell command to run.
+        
+    Returns:
+        Tuple[int, str]: (Exit Code, Formatted Output Block)
+        Note: Returns -1 as exit code if execution crashes (e.g. binary not found).
+    """
+    try:
+        # shell=True allows using flags and pipes easily in the config
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        cmd_result = CommandResult.from_success(
+            exit_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr
+        )
+        
+        return result.returncode, cmd_result.formatted_output(command)
+        
+    except Exception as e:
+        cmd_result = CommandResult.from_failure(str(e))
+        return cmd_result.exit_code, cmd_result.formatted_output(command)

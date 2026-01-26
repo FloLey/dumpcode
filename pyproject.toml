@@ -36,6 +36,7 @@ dumpcode = "dumpcode.main:main"
 include-package-data = false
 
 [tool.setuptools.packages.find]
+where = ["src"]
 exclude = [
     "tests*",
     "*.dump_config.json",
@@ -46,3 +47,8 @@ exclude = [
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
+
+[tool.pytest.ini_options]
+markers = [
+    "edge_case: marks tests as edge case tests (deselect with '-m \"not edge_case\"')",
+]

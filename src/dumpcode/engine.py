@@ -2,13 +2,13 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set
 
 from .constants import DEFAULT_POST, DEFAULT_PRE, DEFAULT_PROFILES
 from .core import DumpSession, DumpSettings
 from .formatters import format_ascii_tree
 from .processors import get_file_content
-from .utils import copy_to_clipboard_osc52, setup_logger
+from .utils import copy_to_clipboard_osc52, setup_logger, run_shell_command
 from .writer import DumpWriter
 from .config import increment_config_version
 
@@ -16,11 +16,29 @@ from .config import increment_config_version
 class DumpEngine:
     """Orchestrate the entire dumping process from file discovery to final output."""
 
-    def __init__(self, config: Dict[str, Any], settings: DumpSettings):
-        """Initialize the engine with configuration and session settings."""
+    def __init__(
+        self, 
+        config: Dict[str, Any], 
+        settings: DumpSettings,
+        session_cls: type[DumpSession] = DumpSession,
+        writer_cls: type[DumpWriter] = DumpWriter,
+        cmd_runner: Optional[Callable[[str], tuple[int, str]]] = None
+    ):
+        """Initialize the engine with configuration and session settings.
+        
+        Args:
+            config: Configuration dictionary
+            settings: Dump settings
+            session_cls: DumpSession class to use (dependency injection point)
+            writer_cls: DumpWriter class to use (dependency injection point)
+            cmd_runner: Optional callable to run shell commands (defaults to utils.run_shell_command)
+        """
         self.config = config
         self.settings = settings
-        self.logger = setup_logger("dumpcode")
+        self.session_cls = session_cls
+        self.writer_cls = writer_cls
+        self.logger = setup_logger("dumpcode", verbose=settings.verbose)
+        self.cmd_runner = cmd_runner or run_shell_command
 
     def run(self) -> None:
         """Execute the complete dump process including tree walking and file writing."""
@@ -30,7 +48,7 @@ class DumpEngine:
         excluded = set(self.config.get("ignore_patterns", []))
         self._exclude_output_file(output_file, excluded)
 
-        session = DumpSession(
+        session = self.session_cls(
             self.settings.start_path,
             excluded,
             self.settings.max_depth,
@@ -62,7 +80,7 @@ class DumpEngine:
                 out_dir.mkdir(parents=True)
 
             with open(output_file, "w", encoding="utf-8") as f:
-                writer = DumpWriter(f, use_xml=use_xml)
+                writer = self.writer_cls(f, use_xml=use_xml)
                 version = self.config.get("version", 1)
 
                 pre_prompt = profile.get("pre") if profile else DEFAULT_PRE
@@ -93,6 +111,30 @@ class DumpEngine:
                     writer.write_skips(session.skipped_files)
 
                 writer.end_dump()
+
+                if profile and "run_commands" in profile:
+                    commands = profile["run_commands"]
+                    
+                    if isinstance(commands, list):
+                        for cmd in commands:
+                            if self.logger:
+                                self.logger.info(f"Running: {cmd}")
+                            
+                            exit_code, output = self.cmd_runner(cmd)
+                            
+                            if exit_code != 0:
+                                self.logger.warning(
+                                    f"⚠️  Command failed (Exit Code {exit_code}): {cmd}"
+                                )
+                                # Hint for "Command not found" (127 is standard, some shells use 1)
+                                if exit_code == 127: 
+                                    self.logger.warning("   (Hint: Is the tool installed in your environment?)")
+                                # Additional hints for common errors
+                                elif "pytest" in cmd and "--cov" in cmd:
+                                    self.logger.warning("   (Hint: Install pytest-cov: pip install pytest-cov)")
+
+                            # Write output regardless of success (we want to see linter errors)
+                            writer.write_command_output(output)
 
                 post_prompt = self.settings.question or (profile.get("post") if profile else DEFAULT_POST)
                 if post_prompt:

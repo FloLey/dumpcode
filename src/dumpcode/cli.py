@@ -2,26 +2,21 @@
 
 import argparse
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .constants import CONFIG_FILENAME
 from .config import load_or_create_config
 
 
-def parse_arguments_with_profiles(start_path: Path) -> argparse.Namespace:
-    """Parse command-line arguments with dynamic profiles loaded from config.
-
-    Load profiles from the local configuration to generate dynamic CLI flags.
-
+def get_parser(profiles: dict) -> argparse.ArgumentParser:
+    """Create and return an ArgumentParser with dynamic profiles.
+    
     Args:
-        start_path: The directory where the configuration is located.
-
+        profiles: Dictionary of profile configurations.
+        
     Returns:
-        The parsed argparse Namespace.
+        Configured ArgumentParser object.
     """
-    config = load_or_create_config(start_path, reset_version=False)
-    profiles = config.get("profiles", {})
-
     parser = argparse.ArgumentParser(
         description="DumpCode: Semantic Codebase Dumper for LLMs.",
         formatter_class=argparse.RawTextHelpFormatter
@@ -79,4 +74,29 @@ def parse_arguments_with_profiles(start_path: Path) -> argparse.Namespace:
             help=desc
         )
 
-    return parser.parse_args()
+    return parser
+
+
+def parse_arguments_with_profiles(start_path: Path, args_list: Optional[list[str]] = None) -> argparse.Namespace:
+    """Parse command-line arguments with dynamic profiles loaded from config.
+
+    Load profiles from the local configuration to generate dynamic CLI flags.
+
+    Args:
+        start_path: The directory where the configuration is located.
+        args_list: Optional list of arguments to parse. If None, uses sys.argv[1:].
+
+    Returns:
+        The parsed argparse Namespace.
+    """
+    config = load_or_create_config(start_path, reset_version=False)
+    profiles = config.get("profiles", {})
+    
+    parser = get_parser(profiles)
+    
+    if args_list is None:
+        return parser.parse_args()
+    else:
+        # Add startpath back to args list for parsing
+        full_args = [str(start_path)] + args_list
+        return parser.parse_args(full_args)

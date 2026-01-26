@@ -11,37 +11,65 @@ DEFAULT_POST = [
 
 DEFAULT_PROFILES = {
     "readme": {
-        "description": "Generate or Update README.md based on actual code logic",
+        "description": "Generate a professional, architect-level README.md for the current project",
         "pre": [
-            "Act as a Senior Technical Writer. Analyze the codebase structure and logic to write a comprehensive README.md.",
+            "Act as a Senior Technical Writer and System Architect.",
+            "Your task is to analyze the provided codebase and generate a high-impact, professional README.md that captures both the 'How' and the 'Why' of the project.",
             "",
-            "Your goal is to accurately document:",
-            "1. The Project Title & Description (One-liner).",
-            "2. Key Features (Derived from actual function/class capabilities).",
-            "3. Installation Instructions (Detect requirements.txt, pyproject.toml, etc).",
-            "4. Usage Examples (Based on CLI arguments or main entry points).",
-            "5. Configuration Options (Explain .dump_config.json structure).",
+            "CRITICAL PHILOSOPHY:",
+            "A README is not just a CLI reference; it is the project's manifesto. Do NOT sacrifice the narrative 'Why' or the 'Workflow' sections for brevity. If the code implements a specific way of working (e.g., PLAN.md, spec-driven development), that must be the centerpiece of the documentation.",
             "",
-            "Do not hallucinate features. Only document what is present in the code."
+            "ANALYSIS GUIDELINES:",
+            "1. **Architecture & Philosophy**: Identify the project's core design pattern. If it uses a structured input/output flow (e.g., 'Sandwich Architecture'), explain WHY this exists (e.g., grounding LLMs, preventing hallucinations).",
+            "2. **Technical Features**: Document advanced implementations found in the code:",
+            "   - Smart content handling (truncation of large files, binary detection, specific encoding support).",
+            "   - Environment awareness (Git integration, terminal-specific escape sequences like OSC52, or remote-work optimizations).",
+            "   - Diagnostic integration (ingesting external tool/linter output).",
+            "3. **The 'Spec-Driven' Workflow**: Analyze CLI flags like --new-plan, --architect, or logic handling PLAN.md. Document the intended iterative development loop (Dump -> Discuss -> Plan -> Implement).",
+            "4. **Configuration**: Explain the .dump_config.json schema, versioning, and how users can customize profiles.",
+            "",
+            "README STRUCTURE:",
+            "- **Identity**: Project name and a high-impact one-liner.",
+            "- **The Philosophy**: Explain the logical flow (e.g., The Sandwich) and the problem it solves.",
+            "- **The Workflow**: A prominent, step-by-step guide on the intended project development lifecycle using the tool's specific features (like PLAN.md syncing).",
+            "- **Feature Highlights**: A list of technically-backed features.",
+            "- **Installation & Requirements**: Detect dependencies from setup files.",
+            "- **Usage & CLI Reference**: A clean table or list of commands.",
+            "",
+            "TONE & STYLE:",
+            "- Tone: Happy, developer-centric, and authoritative.",
+            "- Style: Use structured Markdown, tables for references, and syntax-highlighted code blocks.",
+            "- Accuracy: Only document what is present in the code. Do not invent capabilities."
         ],
-        "post": "Output the result in raw Markdown format suitable for direct copy-pasting into README.md."
+        "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document."
     },
     "cleanup": {
-        "description": "Clean code: formatting, docstrings, unused imports",
-        "pre": [
-            "Act as a Senior Python Developer and Code Reviewer. Your task is to perform a 'Spring Cleaning' on the codebase.",
-            "",
-            "Your goal is strict technical correctness, NOT subjective preference.",
-            "1. Remove unused imports and dead code (commented-out blocks).",
-            "2. Remove trivial comments (e.g., '# increments i').",
-            "3. Fix objective PEP 8 layout violations (indentation, spacing).",
-            "4. Add MISSING docstrings. Do NOT rewrite existing docstrings unless they are factually incorrect.",
-            "",
-            "CRITICAL: Be conservative. If a file is already clean, do NOT make trivial changes just to generate a diff. If no objective errors exist, state 'No changes needed'.",
-            "",
-            "Note: DumpCode itself was developed using this exact cleanup profile in a self-referential loop with Gemini. Each iteration used DumpCode to analyze the DumpCode codebase, creating a virtuous cycle of self-improvement."
+        "description": "Clean code: formatting, docstrings, unused imports (Runs ruff & mypy)",
+        "run_commands": [
+            "ruff check . --output-format=full",
+            "mypy ."
         ],
-        "post": "Provide the changes in unified diff format for each file. If a file requires no changes, state 'No changes needed for [filename]'. Summarize the number of docstrings added and PEP 8 violations fixed per file. Format the output as a developer specification in Markdown with clear sections for each file."
+        "pre": [
+            "Act as a Senior Python Developer and Code Reviewer.",
+            "Your task is to perform a 'Spring Cleaning' on the codebase.",
+            "",
+            "INPUT DATA:",
+            "1. The source code in <files>.",
+            "2. The Linter Reports in <execution> (Ruff and Mypy).",
+            "",
+            "HANDLING MISSING TOOLS:",
+            "If the <execution> log shows 'command not found' or similar execution errors, IGNORE the missing tool and proceed with a manual review based on standard Python best practices.",
+            "",
+            "PRIORITIES:",
+            "1. **Linter Fixes**: You MUST fix every error reported in the <execution> tag. If Ruff complains about imports, remove them. If Mypy complains about types, fix the annotation.",
+            "2. **Standard Cleanup**: Even if no linter errors exist, look for:",
+            "   - Dead code (commented-out blocks).",
+            "   - Trivial comments (e.g., '# increments i').",
+            "   - MISSING docstrings (add them if missing).",
+            "",
+            "CRITICAL: Be conservative. If a file is clean and passes linters, state 'No changes needed'."
+        ],
+        "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved."
     },
     "optimize": {
         "description": "Identify bottlenecks and suggest performance improvements",
@@ -108,5 +136,63 @@ DEFAULT_PROFILES = {
             "3. If the current implementation is simple, effective, and maintainable, explicitly state 'No architectural changes needed'."
         ],
         "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes."
+    },
+    "coverage": {
+        "description": "Run coverage report and plan tests for missing lines",
+        "run_commands": [
+            "pytest --cov=src/dumpcode --cov-report=term-missing"
+        ],
+        "pre": [
+            "Act as a Senior QA Engineer.",
+            "Review the codebase and the <execution> report.",
+            "",
+            "GOAL: Create a plan to reach >95% coverage.",
+            "1. Analyze lines marked 'Missing' in the report.",
+            "2. Determine which missing lines are critical logic vs. trivial boilerplate.",
+            "3. If coverage is already high (>95%) and no critical logic is missing, DO NOT generate a plan.",
+            "4. If gaps exist, outline exactly which tests need to be written."
+        ],
+        "post": [
+            "If the project is healthy (High Coverage), output ONLY: **✅ Coverage is healthy. No actions needed.**",
+            "",
+            "Otherwise, output a file named `COVERAGE_PLAN.md` containing:",
+            "# Coverage Improvement Plan",
+            "## Missing Critical Paths",
+            "- `file.py`: Lines X-Y (Description of logic)",
+            "",
+            "## Proposed Tests",
+            "- [ ] `test_new_feature`: [Description of what to test]"
+        ]
+    },
+    "test-fixer": {
+        "description": "Run tests (verbose) and plan fixes for failures",
+        "run_commands": [
+            "pytest -v"
+        ],
+        "pre": [
+            "Act as a CI/CD Reliability Engineer.",
+            "Analyze the <execution> report for failures and stability issues.",
+            "",
+            "PRIORITY:",
+            "1. FAILURES: Any non-zero exit code or 'FAILED' tests.",
+            "2. ERRORS: Any runtime errors in the log.",
+            "",
+            "STOPPING CONDITION:",
+            "If the Exit Code is 0 and all tests passed, DO NOT invent work. Output: **✅ All tests passed. System is stable.**"
+        ],
+        "post": [
+            "If tests failed, output a file named `FIX_PLAN.md` containing:",
+            "# Test Repair Plan",
+            "## Diagnosis",
+            "- **Failure**: `test_name`",
+            "- **Error**: [Brief error content]",
+            "- **Root Cause**: [Analysis based on code + log]",
+            "",
+            "## Action Items",
+            "1. [Step-by-step fix instructions]",
+            "",
+            "## Verification",
+            "- Command to verify the fix"
+        ]
     }
 }

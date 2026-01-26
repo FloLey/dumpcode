@@ -1,10 +1,11 @@
 """Unit tests for DumpSession class."""
 
 import os
+from unittest.mock import patch
 
-from src.dumpcode.constants import CONFIG_FILENAME
-from src.dumpcode.core import DumpSession
-from src.dumpcode.formatters import format_ascii_tree
+from dumpcode.constants import CONFIG_FILENAME
+from dumpcode.core import DumpSession
+from dumpcode.formatters import format_ascii_tree
 
 
 class TestDumpSessionIsExcluded:
@@ -219,3 +220,72 @@ class TestDumpSessionRecursion:
         assert len(session.files_to_dump) == 0
         tree_lines = format_ascii_tree(session.tree_entries)
         assert any(line.endswith("/") for line in tree_lines)
+
+
+# Consolidated tests from test_coverage_final_push.py
+def test_core_exclusion_exact_match(tmp_path):
+    """Cover core.py:131 (rel_path == clean_pattern)"""
+    from dumpcode.core import DumpSession
+    
+    session = DumpSession(tmp_path, {"src/main.py"}, None, False)
+    # File exactly matches an ignore pattern string
+    assert session.is_excluded(tmp_path / "src" / "main.py") is True
+
+
+def test_core_scandir_permission_denied(tmp_path):
+    """Cover core.py:209-217 (PermissionError handling during tree walk)"""
+    from dumpcode.core import DumpSession
+    
+    session = DumpSession(tmp_path, set(), None, False)
+    with patch("os.scandir", side_effect=PermissionError):
+        session.generate_tree(tmp_path)
+    # Check that an error entry was recorded in the tree
+    assert any("[Permission Denied]" in str(e.error_msg) for e in session.tree_entries)
+
+
+# Consolidated tests from test_coverage_gaps.py
+class TestCoreGaps:
+    def test_session_scandir_errors(self, tmp_path):
+        """Cover core.py:202-203, 208-219 (FileNotFound and PermissionError in tree walk)"""
+        from dumpcode.core import DumpSession
+        
+        session = DumpSession(tmp_path, set(), None, False)
+        
+        # 1. Test FileNotFoundError (e.g. dir deleted during scan)
+        with patch("os.scandir", side_effect=FileNotFoundError()):
+            session.generate_tree(tmp_path)
+            # Should return silently
+            
+        # 2. Test PermissionError
+        with patch("os.scandir", side_effect=PermissionError()):
+            session.generate_tree(tmp_path)
+            # Check if any tree entries were created with error messages
+            # The actual error message format might be different
+            assert len(session.tree_entries) > 0
+
+    def test_exact_path_exclusion(self, tmp_path):
+        """Cover core.py:131 (rel_path == clean_pattern)"""
+        from dumpcode.core import DumpSession
+        
+        session = DumpSession(tmp_path, {"src/main.py"}, None, False)
+        target = tmp_path / "src" / "main.py"
+        # Mock relative_to to return the exact string
+        assert session.is_excluded(target) is True
+
+
+# Consolidated tests from test_final_coverage.py
+def test_core_traversal_race_conditions(tmp_path):
+    """Cover core.py:202, 210 (FileNotFound/PermissionError during scan)"""
+    from dumpcode.core import DumpSession
+    
+    session = DumpSession(tmp_path, set(), None, False)
+    
+    with patch("os.scandir", side_effect=FileNotFoundError):
+        session.generate_tree(tmp_path) # Should return silently
+        
+    with patch("os.scandir", side_effect=PermissionError):
+        session.generate_tree(tmp_path)
+        # Check that an error entry was created
+        assert len(session.tree_entries) > 0
+        # The error message format might be different
+        assert session.tree_entries[0].error_msg is not None

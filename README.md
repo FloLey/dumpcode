@@ -1,149 +1,158 @@
-# DumpCode
+# DumpCode: The Semantic Context Engine for LLM-Native Development
 
-**DumpCode** is a semantic codebase dumper designed to prepare code for Large Language Models (LLMs). Unlike simple concatenation tools, DumpCode treats your codebase as a structured dataset, wrapping it in XML and sandwiching it between context-aware prompt templates.
+DumpCode is a professional-grade codebase dumper that transforms your project into a structured, LLM-ready dataset. Unlike simple concatenation scripts, DumpCode treats your code as a semantic hierarchy, wrapping it in XML and grounding it via a Sandwich Architecture to maximize the reasoning capabilities of Large Language Models.
 
-## Key Features
+## 🧠 The Philosophy: The Prompt Sandwich
 
-*   **The "Prompt Sandwich" Architecture**: Automatically structures output as: `[Role Instructions]` + `[Code Context]` + `[Specific Task]`.
-*   **Semantic XML Output**: Wraps code in `<tree>`, `<file>`, and `<dump>` tags to help LLMs distinguish between file paths, directory structures, and file contents.
-*   **Native Git Integration**:
-    *   **Exclusion**: Uses `pathspec` to parse `.gitignore` files exactly as Git does (handling negations and nested rules).
-    *   **Detection**: Can limit dumps to only files that are modified or untracked (`--changed`).
-*   **Smart Content Processing**:
-    *   **Binary Detection**: Scans file headers (shebangs/null bytes) to skip binaries like images or compiled code.
-    *   **Data Truncation**: Automatically detects large data files (`.csv`, `.jsonl`, `.log`) and truncates them to the first 5 lines to preserve context window.
-    *   **Encoding Heuristics**: Robustly handles UTF-8, UTF-8-SIG (BOM), Latin-1, and CP1252.
-*   **Dynamic Profiles**: Switch between different LLM personas (Architect, Technical Writer, QA) via CLI flags.
-*   **Meta-Configuration**: A self-modifying mode that generates prompts to help you update the DumpCode configuration itself.
-*   **OSC 52 Clipboard**: Pushes the generated dump directly to your local system clipboard, even over SSH.
+Large Language Models (LLMs) perform best when instructions are clearly separated from data. DumpCode enforces a "Sandwich Architecture" that structures every output into three logical layers to prevent context drifting and hallucinations:
+
+**The Instructions (`<instructions>`):** Sets the persona (e.g., Senior Architect) and the architectural rules before the model sees a single line of code.
+
+**The Context (`<dump>`):** A semantic XML representation of your project, including a visual directory tree, file contents, and execution diagnostics (linter/test outputs).
+
+**The Task (`<task>`):** The specific trigger or question. By placing the "Ask" at the very end, we ensure the LLM has parsed the entire context before attempting a response.
 
 ---
 
-## The "Sandwich" Architecture & Templating
+## 🤖 Included Profiles: Your Virtual Engineering Team
 
-DumpCode does not use a traditional templating engine. Instead, the `DumpEngine` constructs a specific, logical flow designed to prime an LLM effectively.
+DumpCode comes with a suite of pre-configured "AI Agents" defined in `.dump_config.json`. Each profile changes the "Buns" of the sandwich to change the LLM's persona and goals.
 
-When you run `dumpcode --profile-name`, the engine assembles the output in three distinct layers:
+| Profile Flag | Role | Primary Function |
+| :--- | :--- | :--- |
+| `--readme` | Technical Writer | Generates professional, architect-level documentation. |
+| `--architect` | System Designer | Analyzes code to generate a master `PLAN.md` specification. |
+| `--plan-next` | Project Manager | Syncs current code state with `PLAN.md` and defines the next task. |
+| `--cleanup` | Code Reviewer | Runs `ruff` and `mypy`, then asks the LLM to fix the reported errors. |
+| `--test-fixer` | QA Engineer | Runs `pytest`, ingests failures, and plans specific code repairs. |
+| `--refactor` | Senior Dev | Identifies SOLID violations and structural "code smells." |
+| `--optimize` | Perf Engineer | Locates algorithmic inefficiencies and I/O bottlenecks. |
+| `--coverage` | SDET | Runs coverage reports and identifies untested critical logic paths. |
 
-### 1. The Top Bun (Instructions)
-**Source:** `profile["pre"]` in `.dump_config.json`
-**Tag:** `<instructions>`
-This section sets the persona and rules for the LLM *before* it sees any code. This prevents the model from hallucinating or answering before reading the context.
+---
 
-### 2. The Meat (The Dump)
-**Source:** The actual file system scan.
-**Tag:** `<dump>`
-This contains the directory tree and the file contents.
 
-### 3. The Bottom Bun (The Task)
-**Source:** `profile["post"]` OR CLI argument `-q "Question"`
-**Tag:** `<task>`
-This is the trigger. After processing the context, what should the LLM *do*?
-*Note: If you provide a question via `-q`, it overrides the profile's default post-prompt.*
+## 🔄 The Workflow: Spec-Driven Iteration
 
-### Example Output
-```xml
-<instructions>
-Act as a Senior Technical Writer...
-</instructions>
+DumpCode is designed to facilitate a "Dump → Discuss → Plan → Implement" loop, keeping your project's `PLAN.md` as the single source of truth.
 
-<dump version="4">
-  <tree>
-    Project Root: /home/dev/project
-    project/
-    ├── src/
-    │   └── main.py
-    └── pyproject.toml
-  </tree>
-  <files>
-    <file path="src/main.py">
-def main(): print("Hello")
-    </file>
-  </files>
-</dump>
+### 1. The Blueprinting Phase
+Generate a comprehensive project roadmap by dumping your current state with the architect persona:
 
-<task>
-Output the result in raw Markdown...
-</task>
+```bash
+dumpcode --architect -q "Create a master specification for a new plugin system."
 ```
 
----
+### 2. The Plan Sync (`--new-plan`)
+Once the LLM provides a roadmap, pipe it directly back into your repository. Use the `-` argument for a safe, interactive "Paste Mode":
 
-## Configuration & Profiles
-
-DumpCode relies on a `.dump_config.json` file in your project root. Run `dumpcode --init` to create it interactively.
-
-### Exclusion Logic (How it works)
-DumpCode employs a **Union Strategy** for exclusions. A file is skipped if it matches ANY of the following:
-
-1.  **Hardcoded Safety**: The system prevents scanning the config file itself or the output file.
-2.  **Config Patterns**: Matches found in the `ignore_patterns` JSON list.
-3.  **Gitignore**: The engine looks for a `.gitignore` file in the root and parses it using `pathspec` (native Git logic).
-
----
-
-## Meta-Configuration (Profile Creator)
-
-Creating, changing, or adding rules to complex JSON profiles manually is tedious. DumpCode includes a **Meta Mode** (`--change-profile`) to automate this.
-
-**Scenario:** You want to add a profile for security auditing.
-
-**Command:**
 ```bash
-dumpcode --change-profile "Add a 'security' profile that looks for vulnerabilities and hardcoded secrets."
-```
-
-**Result:**
-DumpCode generates a prompt containing your current config and your instruction, then copies it to the clipboard. You paste this into an LLM, and it returns the valid JSON update for your config.
-
----
-
-## Project Management Workflow (`PLAN.md`)
-
-DumpCode includes a specific workflow for maintaining a `PLAN.md` file using the `--new-plan` argument. This allows you to pipe LLM output directly back into your project roadmap.
-
-**1. Generate the Plan:**
-```bash
-# Dump code with the architect profile to your clipboard
-dumpcode --architect -q
-```
-
-**2. Update the Plan:**
-Paste the dump into your LLM. Discuss with the LLM and produce a new Markdown plan. Copy that response.
-
-**3. Save the Plan:**
-Paste the content directly into `PLAN.md` using the paste mode:
-```bash
-# Opens stdin, paste your content, then hit Ctrl+D
+# This opens a buffer; paste the LLM's Markdown and hit Ctrl+D
 dumpcode --new-plan -
 ```
 
-Or update from a file:
+### 3. Focused Implementation (`--changed`)
+Don't waste tokens. Once you start coding, dump only the files you've modified in Git to provide the LLM with the specific "delta" context it needs:
+
 ```bash
-dumpcode --new-plan /path/to/new_plan.md
+dumpcode --changed --plan-next
 ```
 
 ---
 
-## Installation
+## 🛠 Technical Feature Highlights
 
-### From Source
-```bash
-git clone https://github.com/FloLey/dumpcode.git
-cd dumpcode
-pip install .
-```
+**Smart Content Handling:**
+- **Truncation:** High-volume files (`.csv`, `.jsonl`, `.log`) are automatically truncated (e.g., first 5-10 lines) to prevent context window saturation.
+- **Binary Detection:** Heuristic scanning (null-byte detection and extension checking) skips compiled objects, images, and non-text assets.
+- **Encoding Resilience:** Heuristic detection of UTF-8, UTF-16, and Latin-1.
+
+**Environment Awareness:**
+- **OSC52 Clipboard:** Pushes the dump directly to your local clipboard via terminal escape sequences. This works flawlessly over SSH, inside Docker, or in remote dev containers.
+- **Git-Native Logic:** Leverages `pathspec` to respect `.gitignore` rules exactly as Git does, including complex negations and nested patterns.
+- **Diagnostic Integration:** The `cleanup` and `test-fixer` profiles execute shell commands (linters/test suites) and wrap the results in `<execution>` tags so the LLM can "see" the errors.
+- **Meta-Configuration:** Use `--change-profile` to generate a prompt that helps you rewrite the tool's own `.dump_config.json` file.
+- **Comprehensive Testing:** Maintains 95%+ test coverage with robust CI/CD pipeline.
+
+## ⚙️ Configuration & Installation
 
 ### Requirements
-*   **Python 3.9+**
-*   `pathspec`: For gitignore parsing.
-*   `tiktoken` (Optional): For precise OpenAI token counting. (Install via `pip install .[token-counting]`)
+- **Python 3.9+**
+- `pathspec` (Included)
+- `tiktoken` (Optional, for precise OpenAI token counting)
 
-### Development
-For development and testing, install with dev dependencies:
+### Installation
 ```bash
-pip install -e ".[token-counting,dev]"
+pip install .
+# Or with dev/token tools:
+pip install ".[token-counting,dev]"
 ```
+
+### Setup
+Initialize your project-specific configuration:
+```bash
+dumpcode --init
+```
+
+### Configuration Schema (`.dump_config.json`)
+
+The configuration file defines how DumpCode processes your project and what profiles are available. Here's the complete schema:
+
+```json
+{
+  "version": 2,
+  "ignore_patterns": [
+    ".dump_config.json",
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    "venv",
+    ".env",
+    ".DS_Store",
+    "codebase_dump.txt",
+    ".claude",
+    ".pytest_cache",
+    "*.egg-info",
+    ".github",
+    "dist",
+    "LICENSE",
+    ".gitignore",
+    ".mypy_cache",
+    ".ruff_cache"
+  ],
+  "profiles": {
+    "profile-name": {
+      "description": "Human-readable description of the profile",
+      "pre": [
+        "Instruction lines for the LLM",
+        "These appear in the <instructions> tag",
+        "Define the persona and rules before the model sees code"
+      ],
+      "post": "The task/question that appears in the <task> tag",
+      "run_commands": [
+        "optional shell commands to run",
+        "output appears in <execution> tags",
+        "e.g., ruff check . --output-format=full"
+      ]
+    }
+  },
+  "use_xml": true
+}
+```
+
+**Key Fields:**
+- `version`: Auto-incremented with each config change (used for tracking iterations)
+- `ignore_patterns`: List of glob patterns to exclude from dumps (union with `.gitignore`)
+- `profiles`: Dictionary of named profiles that define LLM personas and tasks
+- `use_xml`: Boolean to toggle between XML tags (`<dump>`) or plain text delimiters
+
+**Profile Structure:**
+- `description`: Brief explanation shown in CLI help
+- `pre`: Array of strings forming the `<instructions>` section (sets LLM persona)
+- `post`: String forming the `<task>` section (the specific ask/trigger)
+- `run_commands`: Optional array of shell commands to execute (output in `<execution>`)
+
+**Meta-Configuration:** Use `dumpcode --change-profile "description of new profile"` to generate a prompt that helps you modify the config via an LLM.
 
 ---
 
@@ -181,27 +190,20 @@ dumpcode --structure-only
 
 ---
 
-## CLI Options
+## ⌨️ CLI Reference
 
-| Flag | Function |
-| :--- | :--- |
-| **Scanning** | |
-| `startpath` | The root directory to scan (default: current dir). |
-| `-L`, `--level` | Max recursion depth for the directory tree. |
-| `--changed` | Only include files modified/untracked in Git. |
-| `-d`, `--dir-only` | Scan directories only (no files). |
-| `--structure-only` | Show the tree, but omit file contents. |
-| `--ignore-errors` | specific encoding errors are skipped (files logged as skipped). |
-| **Output** | |
-| `-o`, `--output-file` | Target file (default: `codebase_dump.txt`). |
-| `--no-copy` | Disable OSC 52 clipboard copying. |
-| `--no-xml` | Use plain text delimiters instead of XML tags. |
-| `--reset-version` | Reset the config version counter to 1. |
-| **Meta / Profiles** | |
-| `--init` | Interactive wizard to generate `.dump_config.json`. |
-| `--new-plan [file\|-]`| Update `PLAN.md` from a file or stdin (`-`). |
-| `--change-profile` | Generate a prompt to modify the config file. |
-| `-q`, `--question` | Override the profile's `post` instruction. |
+| Flag | Category | Description |
+| :--- | :--- | :--- |
+| `startpath` | Scanning | Root directory to scan (default: `.`). |
+| `-L`, `--level` | Scanning | Max recursion depth for the directory tree. |
+| `--changed` | Scanning | Only include files modified/untracked in Git. |
+| `--structure-only` | Scanning | Output the visual tree, but omit file contents. |
+| `-o [file]` | Output | Target output file (default: `codebase_dump.txt`). |
+| `--no-copy` | Output | Disable the automatic OSC52 clipboard copy. |
+| `--no-xml` | Output | Use plain text delimiters instead of semantic XML. |
+| `-q [query]` | Meta | Override a profile's task with a specific question. |
+| `--new-plan [file\|-]` | Meta | Update `PLAN.md` from a file or stdin. |
+| `--change-profile` | Meta | Generate a prompt to modify your `.dump_config.json`. |
 
 ## How DumpCode Was Built (Using DumpCode)
 
@@ -276,7 +278,7 @@ pytest --cov=src/dumpcode --cov-report=html --cov-report=xml --cov-report=term-m
 ### CI/CD
 GitHub Actions runs tests with coverage on every push and PR:
 - Tests across Python 3.9-3.12
-- Minimum 85% coverage requirement
+- Minimum 95% coverage requirement
 - HTML coverage reports uploaded as artifacts
 - Linting with ruff and type checking with mypy
 

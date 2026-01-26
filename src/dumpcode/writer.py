@@ -96,3 +96,14 @@ class DumpWriter:
     def end_dump(self) -> None:
         """Write the closing XML dump tag."""
         self.write_raw("</dump>\n")
+
+    def write_command_output(self, output: str) -> None:
+        """Write the output of an external command execution.
+        
+        Wraps content in <execution> tags and ensures XML safety.
+        """
+        if not output:
+            return
+        
+        escaped_output = escape(output)
+        self.write_raw(f"\n  <execution>\n{escaped_output}\n  </execution>\n")

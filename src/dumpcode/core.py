@@ -116,7 +116,7 @@ class DumpSession:
             try:
                 import pathspec
                 with open(gitignore_path, "r") as f:
-                    return pathspec.PathSpec.from_lines('gitwildmatch', f)
+                    return pathspec.PathSpec.from_lines('gitignore', f)
             except ImportError:
                 return None
         return None
@@ -144,26 +144,23 @@ class DumpSession:
         if name == CONFIG_FILENAME:
             return True
 
-        if not self.excluded_patterns:
-            return False
-
         rel_path = item_path.relative_to(self.root_path).as_posix()
 
-        for pattern in self.excluded_patterns:
-            clean_pattern = pattern.rstrip('/')
+        if self.excluded_patterns:
+            for pattern in self.excluded_patterns:
+                clean_pattern = pattern.rstrip('/')
 
-            if "/" not in clean_pattern:
-                if fnmatch.fnmatch(name, clean_pattern):
+                if "/" not in clean_pattern:
+                    if fnmatch.fnmatch(name, clean_pattern):
+                        return True
+
+                if fnmatch.fnmatch(rel_path, clean_pattern):
                     return True
 
-            if fnmatch.fnmatch(rel_path, clean_pattern):
-                return True
-
-            if rel_path.startswith(clean_pattern + "/") or rel_path == clean_pattern:
-                return True
+                if rel_path.startswith(clean_pattern + "/") or rel_path == clean_pattern:
+                    return True
 
         if self.gitignore_spec:
-            rel_path = item_path.relative_to(self.root_path).as_posix()
             if self.gitignore_spec.match_file(rel_path):
                 return True
 
