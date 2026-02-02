@@ -189,18 +189,32 @@ dumpcode --test-models
 
 ### Installation
 
+#### From GitHub (Recommended)
 ```bash
 # Basic installation
-pip install .
+pip install git+https://github.com/FloLey/dumpcode.git
 
 # With AI support (all providers)
-pip install "dumpcode[ai]"
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[ai]"
 
 # With specific AI providers
-pip install "dumpcode[claude]"      # Anthropic
-pip install "dumpcode[gemini]"      # Google
-pip install "dumpcode[openai]"      # OpenAI
-pip install "dumpcode[deepseek]"    # DeepSeek
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[claude]"      # Anthropic
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[gemini]"      # Google
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[openai]"      # OpenAI
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[deepseek]"    # DeepSeek
+```
+
+#### From Source (Development)
+```bash
+# Clone the repository
+git clone https://github.com/FloLey/dumpcode.git
+cd dumpcode
+
+# Install in development mode
+pip install -e .
+
+# Or with AI support
+pip install -e ".[ai]"
 ```
 
 ### Configuration Setup
