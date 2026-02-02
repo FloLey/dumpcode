@@ -248,9 +248,10 @@ def test_writer_write_skips_without_xml():
     writer.write_skips(skips)
     
     result = output.getvalue()
-    # Even without XML mode, skips should still be written as XML comments
-    assert "<!-- Skipped Files Summary:" in result
+    # Without XML mode, skips are written as plain text headers
+    assert "=== SKIPPED FILES ===" in result
     assert "- test.txt: test reason" in result
+    assert "<!-- Skipped Files Summary:" not in result
 
 
 def test_writer_write_skips_format():

@@ -26,9 +26,9 @@ def estimate_tokens(text: str, logger: Optional[logging.Logger] = None) -> int:
         import tiktoken
         encoding = tiktoken.get_encoding("cl100k_base")
         return len(encoding.encode(text))
-    except (ImportError, Exception):
+    except Exception: # Catch ALL errors here to ensure fallback
         if logger:
-            logger.debug("tiktoken not found; using character-based estimation (total_chars // 4)")
+            logger.debug("tiktoken failed; using character-based estimation")
         return len(text) // 4
 
 

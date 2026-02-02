@@ -52,6 +52,11 @@ def get_parser(profiles: dict) -> argparse.ArgumentParser:
     meta_group.add_argument("--new-plan", nargs="?", const="-", help="Update PLAN.md")
     meta_group.add_argument("--change-profile", type=str, help="Instruction to modify .dump_config.json")
     meta_group.add_argument("-q", "--question", type=str, help="Post-dump instruction (overrides profile)")
+    meta_group.add_argument(
+        "--test-models",
+        action="store_true",
+        help="Run parallel connectivity tests for all configured AI providers"
+    )
 
     profile_group = parser.add_argument_group("LLM Prompt Profiles")
 
@@ -73,6 +78,25 @@ def get_parser(profiles: dict) -> argparse.ArgumentParser:
             action="store_true",
             help=desc
         )
+
+    # Add new AI group after existing groups
+    ai_group = parser.add_argument_group("AI Options")
+    ai_group.add_argument(
+        "--auto",
+        action="store_true",
+        help="Force auto-send to AI (overrides profile config)"
+    )
+    ai_group.add_argument(
+        "--no-auto",
+        action="store_true",
+        help="Disable auto-send to AI (overrides profile config)"
+    )
+    ai_group.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Override AI model for this run (e.g., claude-sonnet-4-5-20250929)"
+    )
 
     return parser
 

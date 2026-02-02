@@ -276,6 +276,17 @@ def test_truncate_text_lines_crash(tmp_path):
         res = truncate_text_lines(p)
         assert "[Data snippet from crash.csv]" in res
 
+def test_truncate_text_lines_fallback_on_error(tmp_path):
+    """Verify that if a file disappears during truncation, we get the fallback snippet."""
+    from dumpcode.processors import truncate_text_lines
+    p = tmp_path / "vanishing.csv"
+    p.write_text("header,data")
+    
+    # Simulate file disappearing or permission loss during the 'with open' call
+    with patch("builtins.open", side_effect=OSError("File vanished")):
+        res = truncate_text_lines(p)
+        assert "[Data snippet from vanishing.csv]" in res
+
 
 # Consolidated tests from test_coverage_final_push.py
 def test_processors_utf16_be_detection():

@@ -163,6 +163,9 @@ def test_run_dump_with_profile(tmp_path):
         question=None,
         reset_version=False,
         verbose=False,
+        auto=False,
+        no_auto=False,
+        model=None,
         test_profile=True  # Matches the profile name
     )
     
@@ -204,6 +207,9 @@ def test_run_dump_without_profile(tmp_path):
         question="Test question",
         reset_version=False,
         verbose=False,
+        auto=False,
+        no_auto=False,
+        model=None,
         # No profile flags set
     )
     
@@ -387,7 +393,7 @@ class TestMainAndUtilsGaps:
             logger = logging.getLogger("test")
             with caplog.at_level(logging.DEBUG):
                 estimate_tokens("hello world", logger=logger)
-            assert "tiktoken not found" in caplog.text
+            assert "tiktoken failed; using character-based estimation" in caplog.text
 
     def test_get_git_modified_files_no_git(self, tmp_path):
         """Cover utils.py:89 (FileNotFoundError for git command)"""

@@ -8,10 +8,10 @@ from typing import Any, Dict, Optional
 
 from .cli import parse_arguments_with_profiles
 from .config import interactive_init, load_or_create_config
-from .constants import DEFAULT_PROFILES
 from .core import DumpSettings
 from .engine import DumpEngine
 from .utils import copy_to_clipboard_osc52, setup_logger
+from .ai.client import load_env_file
 
 
 def handle_new_plan(start_path: Path, plan_input: str) -> None:
@@ -69,32 +69,7 @@ def run_dump(args: argparse.Namespace, config: Dict[str, Any], start_path: Path)
         config: Loaded configuration dictionary.
         start_path: Resolved path to begin scanning.
     """
-    active_profile = None
-    profiles = config.get("profiles", {})
-    merged_profiles = {**DEFAULT_PROFILES, **profiles}
-
-    for name, data in merged_profiles.items():
-        attr_name = name.replace('-', '_')
-        if getattr(args, attr_name, False):
-            active_profile = data
-            break
-
-    settings = DumpSettings(
-        start_path=start_path,
-        output_file=Path(args.output_file),
-        max_depth=args.level,
-        dir_only=args.dir_only,
-        ignore_errors=args.ignore_errors,
-        structure_only=args.structure_only,
-        no_copy=args.no_copy,
-        use_xml=False if args.no_xml else config.get("use_xml", True),
-        git_changed_only=args.changed,
-        question=args.question,
-        active_profile=active_profile,
-        reset_version=args.reset_version,
-        verbose=args.verbose
-    )
-
+    settings = DumpSettings.from_arguments(args, config, start_path)
     engine = DumpEngine(config, settings)
     engine.run()
 
@@ -119,8 +94,16 @@ def main(args_list: Optional[list[str]] = None) -> None:
         print(f"Error: Invalid directory '{start_path}'")
         return
 
+    # Load environment variables from .env file at the very beginning
+    load_env_file(start_path)
+
     # Parse arguments with the start path
     args = parse_arguments_with_profiles(start_path, args_list)
+
+    if args.test_models:
+        from .ai.diagnostics import run_diagnostics
+        run_diagnostics()
+        return
 
     if args.init:
         interactive_init(start_path)

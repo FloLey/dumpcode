@@ -9,6 +9,13 @@ DEFAULT_POST = [
     "Analyze the provided codebase and provide a high-level summary of its purpose and architecture."
 ]
 
+# Model recommendations by task and provider strengths:
+# - Gemini Flash: Blazing fast, cheap - perfect for mechanical/routine tasks
+# - DeepSeek Chat: Very cheap, good for straightforward analysis
+# - DeepSeek Reasoner: Thinking mode - good for algorithmic reasoning
+# - Claude Sonnet: Excellent writing and code understanding
+# - GPT-5.2: Strong general-purpose, good at structured output
+
 DEFAULT_PROFILES = {
     "readme": {
         "description": "Generate a professional, architect-level README.md for the current project",
@@ -41,7 +48,9 @@ DEFAULT_PROFILES = {
             "- Style: Use structured Markdown, tables for references, and syntax-highlighted code blocks.",
             "- Accuracy: Only document what is present in the code. Do not invent capabilities."
         ],
-        "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document."
+        "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document.",
+        "model": "claude-sonnet-4-5-20250929",
+        "auto": True
     },
     "cleanup": {
         "description": "Clean code: formatting, docstrings, unused imports (Runs ruff & mypy)",
@@ -69,7 +78,9 @@ DEFAULT_PROFILES = {
             "",
             "CRITICAL: Be conservative. If a file is clean and passes linters, state 'No changes needed'."
         ],
-        "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved."
+        "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved.",
+        "model": "gemini-3-flash-preview",
+        "auto": True
     },
     "optimize": {
         "description": "Identify bottlenecks and suggest performance improvements",
@@ -85,7 +96,9 @@ DEFAULT_PROFILES = {
             "CRITICAL: Avoid premature optimization. Do not suggest micro-optimizations (e.g., replacing 'format' with 'f-strings') unless the code is clearly in a performance-critical hot path. If the performance gain is negligible, do not report it.",
             "If no significant bottlenecks exist, explicitly state 'No optimizations needed'."
         ],
-        "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation."
+        "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation.",
+        "model": "deepseek-reasoner",
+        "auto": True
     },
     "architect": {
         "description": "Generate a Project Roadmap & Specification (PLAN.md)",
@@ -101,7 +114,9 @@ DEFAULT_PROFILES = {
             "4. **Missing Features**: Gaps between the implied goal and current code.",
             "5. **Tech Debt**: Areas that need refactoring (identified from the code)."
         ],
-        "post": "Output the content in Markdown format. This will be used to update the project PLAN.md."
+        "post": "Output the content in Markdown format. This will be used to update the project PLAN.md.",
+        "model": "claude-sonnet-4-5-20250929",
+        "auto": True
     },
     "plan-next": {
         "description": "Sync PLAN.md with code; stop if finished",
@@ -121,7 +136,9 @@ DEFAULT_PROFILES = {
             "If the project is complete, output the finished PLAN.md followed by a summary of the project's current stable state.",
             "If tasks remain, follow the plan with a 'Developer Specification' section for the very next task.",
             "Ensure codeblocks are syntactically correct."
-        ]
+        ],
+        "model": "gpt-5.2",
+        "auto": True
     },
     "refactor": {
         "description": "Suggest architectural improvements and code cleanups",
@@ -135,7 +152,9 @@ DEFAULT_PROFILES = {
             "2. Prioritize Readability: If a refactor makes the code 'smarter' but harder to read, do NOT suggest it.",
             "3. If the current implementation is simple, effective, and maintainable, explicitly state 'No architectural changes needed'."
         ],
-        "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes."
+        "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes.",
+        "model": "claude-sonnet-4-5-20250929",
+        "auto": True
     },
     "coverage": {
         "description": "Run coverage report and plan tests for missing lines",
@@ -162,7 +181,9 @@ DEFAULT_PROFILES = {
             "",
             "## Proposed Tests",
             "- [ ] `test_new_feature`: [Description of what to test]"
-        ]
+        ],
+        "model": "deepseek-chat",
+        "auto": True
     },
     "test-fixer": {
         "description": "Run tests (verbose) and plan fixes for failures",
@@ -193,6 +214,8 @@ DEFAULT_PROFILES = {
             "",
             "## Verification",
             "- Command to verify the fix"
-        ]
+        ],
+        "model": "gemini-3-flash-preview",
+        "auto": True
     }
 }

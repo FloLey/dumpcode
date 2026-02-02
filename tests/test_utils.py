@@ -243,7 +243,11 @@ def test_run_shell_command_execution_failure():
 @pytest.mark.edge_case
 def test_estimate_tokens_generic_exception(caplog):
     """Cover utils.py:30 (Tiktoken generic exception fallback)"""
-    with patch("tiktoken.get_encoding", side_effect=AttributeError("Bug")):
+    from unittest.mock import MagicMock
+    mock_tiktoken = MagicMock()
+    mock_tiktoken.get_encoding.side_effect = AttributeError("Bug")
+    
+    with patch.dict('sys.modules', {'tiktoken': mock_tiktoken}):
         res = estimate_tokens("test string", logger=Mock())
         # Should fallback to len // 4
         assert res == 2
@@ -259,7 +263,7 @@ def test_utils_tiktoken_fallback_log(caplog):
         logger = logging.getLogger("test_logger")
         with caplog.at_level(logging.DEBUG):
             estimate_tokens("test string", logger=logger)
-        assert "tiktoken not found" in caplog.text
+        assert "tiktoken failed; using character-based estimation" in caplog.text
 
 
 def test_utils_git_missing_binary():
@@ -269,3 +273,14 @@ def test_utils_git_missing_binary():
     
     with patch("subprocess.run", side_effect=FileNotFoundError):
         assert get_git_modified_files(Path(".")) == []
+
+def test_utils_git_called_process_error():
+    """Cover utils.py:89 (CalledProcessError when directory is not a git repo)"""
+    from dumpcode.utils import get_git_modified_files
+    from pathlib import Path
+    import subprocess
+    
+    # Mock subprocess.run to raise CalledProcessError (simulating non-git directory)
+    with patch("subprocess.run", side_effect=subprocess.CalledProcessError(128, "git", stderr="fatal: not a git repository")):
+        result = get_git_modified_files(Path("/tmp/not-a-git-repo"))
+        assert result == []

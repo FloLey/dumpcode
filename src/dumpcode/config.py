@@ -15,6 +15,7 @@ DEFAULT_CONFIG = {
         ".claude", ".pytest_cache", "*.egg-info",
         ".github", "dist", "LICENSE", ".gitignore",
         ".mypy_cache", ".ruff_cache",
+        "ai_response.md",
     ],
     "profiles": DEFAULT_PROFILES,
     "use_xml": True

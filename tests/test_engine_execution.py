@@ -42,10 +42,10 @@ def test_writer_write_command_output_no_xml():
     writer.write_command_output(test_output)
     
     result = stream.getvalue()
-    # Even with use_xml=False, write_command_output still uses XML tags
-    # This is by design based on the current implementation
-    assert "<execution>" in result
+    # With use_xml=False, write_command_output uses plain text headers
+    assert "--- COMMAND EXECUTION OUTPUT ---" in result
     assert "Test output" in result
+    assert "<execution>" not in result
 
 
 def test_writer_write_command_output_newlines():

@@ -1,5 +1,5 @@
 {
-    "version": 2,
+    "version": 53,
     "ignore_patterns": [
         ".dump_config.json",
         ".git",
@@ -17,7 +17,8 @@
         "LICENSE",
         ".gitignore",
         ".mypy_cache",
-        ".ruff_cache"
+        ".ruff_cache",
+        "ai_response.md"
     ],
     "profiles": {
         "readme": {
@@ -51,7 +52,9 @@
                 "- Style: Use structured Markdown, tables for references, and syntax-highlighted code blocks.",
                 "- Accuracy: Only document what is present in the code. Do not invent capabilities."
             ],
-            "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document."
+            "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document.",
+            "model": "claude-sonnet-4-5-20250929",
+            "auto": true
         },
         "cleanup": {
             "description": "Clean code: formatting, docstrings, unused imports (Runs ruff & mypy)",
@@ -79,7 +82,9 @@
                 "",
                 "CRITICAL: Be conservative. If a file is clean and passes linters, state 'No changes needed'."
             ],
-            "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved."
+            "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved.",
+            "model": "gemini-3-flash-preview",
+            "auto": true
         },
         "optimize": {
             "description": "Identify bottlenecks and suggest performance improvements",
@@ -95,7 +100,9 @@
                 "CRITICAL: Avoid premature optimization. Do not suggest micro-optimizations (e.g., replacing 'format' with 'f-strings') unless the code is clearly in a performance-critical hot path. If the performance gain is negligible, do not report it.",
                 "If no significant bottlenecks exist, explicitly state 'No optimizations needed'."
             ],
-            "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation."
+            "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation.",
+            "model": "deepseek-reasoner",
+            "auto": false
         },
         "architect": {
             "description": "Generate a Project Roadmap & Specification (PLAN.md)",
@@ -111,7 +118,9 @@
                 "4. **Missing Features**: Gaps between the implied goal and current code.",
                 "5. **Tech Debt**: Areas that need refactoring (identified from the code)."
             ],
-            "post": "Output the content in Markdown format. This will be used to update the project PLAN.md."
+            "post": "Output the content in Markdown format. This will be used to update the project PLAN.md.",
+            "model": "claude-sonnet-4-5-20250929",
+            "auto": false
         },
         "plan-next": {
             "description": "Sync PLAN.md with code; stop if finished",
@@ -131,7 +140,9 @@
                 "If the project is complete, output the finished PLAN.md followed by a summary of the project's current stable state.",
                 "If tasks remain, follow the plan with a 'Developer Specification' section for the very next task.",
                 "Ensure codeblocks are syntactically correct."
-            ]
+            ],
+            "model": "gpt-5.2",
+            "auto": true
         },
         "refactor": {
             "description": "Suggest architectural improvements and code cleanups",
@@ -145,7 +156,9 @@
                 "2. Prioritize Readability: If a refactor makes the code 'smarter' but harder to read, do NOT suggest it.",
                 "3. If the current implementation is simple, effective, and maintainable, explicitly state 'No architectural changes needed'."
             ],
-            "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes."
+            "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes.",
+            "model": "claude-sonnet-4-5-20250929",
+            "auto": false
         },
         "coverage": {
             "description": "Run coverage report and plan tests for missing lines",
@@ -156,10 +169,10 @@
                 "Act as a Senior QA Engineer.",
                 "Review the codebase and the <execution> report.",
                 "",
-                "GOAL: Create a plan to reach >95% coverage.",
+                "GOAL: Create a plan to reach >90% coverage.",
                 "1. Analyze lines marked 'Missing' in the report.",
                 "2. Determine which missing lines are critical logic vs. trivial boilerplate.",
-                "3. If coverage is already high (>95%) and no critical logic is missing, DO NOT generate a plan.",
+                "3. If coverage is already high (>90%) and no critical logic is missing, DO NOT generate a plan.",
                 "4. If gaps exist, outline exactly which tests need to be written."
             ],
             "post": [
@@ -172,7 +185,9 @@
                 "",
                 "## Proposed Tests",
                 "- [ ] `test_new_feature`: [Description of what to test]"
-            ]
+            ],
+            "model": "deepseek-chat",
+            "auto": true
         },
         "test-fixer": {
             "description": "Run tests (verbose) and plan fixes for failures",
@@ -203,7 +218,9 @@
                 "",
                 "## Verification",
                 "- Command to verify the fix"
-            ]
+            ],
+            "model": "gemini-3-flash-preview",
+            "auto": true
         }
     },
     "use_xml": true

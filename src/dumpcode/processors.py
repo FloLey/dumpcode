@@ -51,6 +51,8 @@ def is_binary_file(filepath: Path) -> bool:
         return True
 
     try:
+        if not filepath.exists(): # Add this check
+            return False
         if filepath.stat().st_size == 0:
             return False
         with open(filepath, 'rb') as f:
@@ -103,6 +105,7 @@ CONTENT_PROCESSORS: Dict[str, Callable[[Path], str]] = {
     ".jsonl": lambda p: truncate_text_lines(p, 5),
     ".log": lambda p: truncate_text_lines(p, 10),
 }
+"""Registry mapping file extensions to specialized content extraction functions."""
 
 
 def get_file_content(file_path: Path, ignore_errors: bool = False) -> Tuple[str, Optional[str]]:

@@ -2,7 +2,7 @@
 
 import logging
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 from dumpcode.constants import DEFAULT_PROFILES
 from dumpcode.core import DumpSettings, DumpSession
 from dumpcode.engine import DumpEngine
@@ -293,7 +293,6 @@ def test_engine_token_limit_warning(project_env, default_settings, caplog):
         engine._finalize(
             Path("dummy.txt"), 
             Mock(dir_count=1, file_count=1), 
-            1, 
             None, 
             total_chars=800_000 
         )
@@ -398,7 +397,7 @@ def test_engine_finalize_profile_resolution_and_token_warning(tmp_path, caplog):
     
     # 800,000 chars / 4 = 200,000 tokens
     with caplog.at_level(logging.INFO):
-        engine._finalize(tmp_path/"out.txt", Mock(dir_count=1, file_count=1), 1, DEFAULT_PROFILES["readme"], 801000)
+        engine._finalize(tmp_path/"out.txt", Mock(dir_count=1, file_count=1), DEFAULT_PROFILES["readme"], 801000)
     
     # Check both messages - token warning is at WARNING level, profile prepended is at INFO
     assert "approaching the 200k limit" in caplog.text
@@ -471,7 +470,7 @@ class TestEngineGaps:
         profile_obj = DEFAULT_PROFILES["readme"]
         
         with caplog.at_level(logging.INFO):
-            engine._finalize(tmp_path/"out.txt", Mock(dir_count=1, file_count=1), 1, profile_obj, 100)
+            engine._finalize(tmp_path/"out.txt", Mock(dir_count=1, file_count=1), profile_obj, 100)
             
         assert "Profile 'readme' prepended to output." in caplog.text
 
@@ -494,7 +493,7 @@ def test_engine_directory_creation_and_limit_warnings(tmp_path, caplog):
     engine = DumpEngine(config={}, settings=settings)
     # 2. Force token warning (800k chars / 4 = 200k tokens)
     with caplog.at_level(logging.WARNING):
-        engine._finalize(nested_out, Mock(dir_count=1, file_count=1), 1, None, total_chars=801000)
+        engine._finalize(nested_out, Mock(dir_count=1, file_count=1), None, total_chars=801000)
     
     # Check token warning - directory creation happens elsewhere
     assert "approaching the 200k limit" in caplog.text
@@ -520,6 +519,67 @@ def test_engine_missing_tool_hints(tmp_path, caplog):
     with caplog.at_level(logging.WARNING):
         engine.run()
     
-    assert "Hint: Is the tool installed" in caplog.text
-    # The specific tool hint might not be generated, just check for warning
+    assert "(Hint: Is the tool installed in your environment?)" in caplog.text
     assert "Command failed (Exit Code 127)" in caplog.text
+
+
+def test_engine_exit_code_127_hint(caplog):
+    """Test engine exit code 127 hint for missing tools."""
+    # Mock cmd_runner to return 127 (Command not found)
+    engine = DumpEngine(config={}, settings=MagicMock(verbose=False))
+    engine.cmd_runner = MagicMock(return_value=(127, "command not found"))
+    
+    writer = MagicMock()
+    engine._write_execution_block(writer, {"run_commands": ["nonexistent-tool"]})
+    
+    assert "Is the tool installed" in caplog.text
+
+
+def test_handle_ai_mode_no_sdk_installed(caplog):
+    """Test that _handle_ai_mode handles missing AI SDK gracefully."""
+    from dumpcode.engine import DumpEngine
+    from pathlib import Path
+    import sys
+    
+    # Force an ImportError when the engine tries to import the AI module
+    with patch.dict(sys.modules, {'dumpcode.ai': None}):
+        engine = DumpEngine(config={}, settings=MagicMock(auto_mode=True))
+        # This will trigger the try/except block in _handle_ai_mode
+        engine._handle_ai_mode(Path("dump.txt"), 100)
+        
+    assert "AI module not available" in caplog.text
+    assert "pip install 'dumpcode[ai]'" in caplog.text
+
+
+def test_engine_command_hint_coverage(caplog):
+    """Verify that we provide hints for 'command not found' (Exit 127)."""
+    from dumpcode.engine import DumpEngine
+    
+    engine = DumpEngine(config={}, settings=MagicMock(verbose=False))
+    # Mock a command not found
+    engine.cmd_runner = MagicMock(return_value=(127, "sh: linter: not found"))
+    
+    writer = MagicMock()
+    profile = {"run_commands": ["linter"]}
+    
+    with caplog.at_level("WARNING"):
+        engine._write_execution_block(writer, profile)
+    
+    assert "Hint: Is the tool installed" in caplog.text
+
+
+def test_engine_finalize_token_estimation_error(tmp_path, caplog):
+    """Verify lines 195-198: Handle errors during token estimation in finalize."""
+    from dumpcode.engine import DumpEngine
+    from unittest.mock import Mock
+    
+    settings = Mock(start_path=tmp_path, output_file=tmp_path/"out.txt", auto_mode=False, no_copy=True)
+    engine = DumpEngine(config={}, settings=settings)
+    
+    # Trigger an error during total_chars // 4 calculation (though unlikely, 
+    # we mock the logger to ensure we hit the exception path if total_chars is invalid)
+    with caplog.at_level("WARNING"):
+        # Passing total_chars as None to force a TypeError inside the try block
+        engine._finalize(tmp_path/"out.txt", Mock(dir_count=1, file_count=1), None, None)
+    
+    assert "Could not estimate tokens" in caplog.text

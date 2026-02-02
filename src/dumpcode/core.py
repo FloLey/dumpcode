@@ -1,6 +1,5 @@
 """Core dumping logic, file system traversal, and session management."""
 
-import fnmatch
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +25,8 @@ class DumpSettings:
         git_changed_only: Whether to only dump files modified in git.
         question: Optional user instruction to append to the prompt.
         verbose: Whether to show detailed processing logs.
+        auto_mode: Whether to send to AI automatically
+        model_override: CLI model override
     """
     start_path: Path
     output_file: Path
@@ -40,6 +41,59 @@ class DumpSettings:
     active_profile: Optional[Dict[str, Any]] = None
     reset_version: bool = False
     verbose: bool = False
+    auto_mode: bool = False
+    model_override: Optional[str] = None
+
+    @classmethod
+    def from_arguments(cls, args: Any, config: Dict[str, Any], start_path: Path) -> "DumpSettings":
+        """Factory to create settings from CLI args and config.
+        
+        Args:
+            args: Parsed CLI arguments from argparse.
+            config: Loaded configuration dictionary.
+            start_path: Resolved path to begin scanning.
+            
+        Returns:
+            DumpSettings instance with all parameters resolved.
+        """
+        from .constants import DEFAULT_PROFILES
+        
+        # 1. Resolve Profile
+        profiles = config.get("profiles", {})
+        merged_profiles = {**DEFAULT_PROFILES, **profiles}
+        active_profile = None
+        for name, data in merged_profiles.items():
+            if getattr(args, name.replace('-', '_'), False):
+                active_profile = data
+                break
+
+        # 2. Resolve AI Auto Mode
+        auto_mode = False
+        if args.no_auto: 
+            auto_mode = False
+        elif args.auto: 
+            auto_mode = True
+        elif active_profile: 
+            auto_mode = active_profile.get("auto", False)
+
+        # 3. Return the instance
+        return cls(
+            start_path=start_path,
+            output_file=Path(args.output_file),
+            max_depth=args.level,
+            dir_only=args.dir_only,
+            ignore_errors=args.ignore_errors,
+            structure_only=args.structure_only,
+            no_copy=args.no_copy,
+            use_xml=False if hasattr(args, 'no_xml') and args.no_xml else config.get("use_xml", True),
+            git_changed_only=args.changed,
+            question=args.question,
+            active_profile=active_profile,
+            reset_version=args.reset_version,
+            verbose=args.verbose,
+            auto_mode=auto_mode,
+            model_override=args.model
+        )
 
 
 @dataclass
@@ -99,27 +153,52 @@ class DumpSession:
         self.files_to_dump: List[Path] = []
         self.skipped_files: List[Dict[str, str]] = []
         self.visited_paths: Set[Path] = set()
-        self.gitignore_spec = self._load_gitignore(root_path)
+        self.matcher = self._create_combined_matcher(root_path, excluded_patterns)
 
-    def _load_gitignore(self, root_path: Path) -> Optional[Any]:
-        """Load .gitignore file using pathspec if available.
+    def _load_gitignore_lines(self, root_path: Path) -> List[str]:
+        """Load .gitignore file lines.
 
         Args:
             root_path: Base directory to search for .gitignore.
 
         Returns:
-            A pathspec.PathSpec instance if gitignore exists and pathspec is installed,
-            otherwise None.
+            List of non-empty, non-comment lines from .gitignore file.
         """
         gitignore_path = root_path / ".gitignore"
-        if gitignore_path.exists():
-            try:
-                import pathspec
-                with open(gitignore_path, "r") as f:
-                    return pathspec.PathSpec.from_lines('gitignore', f)
-            except ImportError:
-                return None
-        return None
+        if not gitignore_path.exists():
+            return []
+        
+        lines = []
+        try:
+            with open(gitignore_path, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        lines.append(line)
+        except OSError:
+            pass
+        return lines
+
+    def _create_combined_matcher(self, root_path: Path, excluded_patterns: Set[str]) -> Any:
+        """Create a combined pathspec matcher from excluded_patterns and .gitignore.
+        
+        Args:
+            root_path: Base directory for the dump.
+            excluded_patterns: Set of glob patterns to ignore.
+            
+        Returns:
+            A pathspec.PathSpec instance if pathspec is available, otherwise None.
+        """
+        all_patterns = list(excluded_patterns) + self._load_gitignore_lines(root_path)
+        
+        if not all_patterns:
+            return None
+            
+        try:
+            import pathspec
+            return pathspec.PathSpec.from_lines('gitignore', all_patterns)
+        except ImportError:
+            return None
 
     def log_skip(self, path: Path, reason: str) -> None:
         """Log a file that was skipped during processing.
@@ -139,31 +218,14 @@ class DumpSession:
         Returns:
             True if the path matches exclusion patterns, False otherwise.
         """
-        name = item_path.name
-
-        if name == CONFIG_FILENAME:
+        if item_path.name == CONFIG_FILENAME:
             return True
 
         rel_path = item_path.relative_to(self.root_path).as_posix()
-
-        if self.excluded_patterns:
-            for pattern in self.excluded_patterns:
-                clean_pattern = pattern.rstrip('/')
-
-                if "/" not in clean_pattern:
-                    if fnmatch.fnmatch(name, clean_pattern):
-                        return True
-
-                if fnmatch.fnmatch(rel_path, clean_pattern):
-                    return True
-
-                if rel_path.startswith(clean_pattern + "/") or rel_path == clean_pattern:
-                    return True
-
-        if self.gitignore_spec:
-            if self.gitignore_spec.match_file(rel_path):
-                return True
-
+        
+        if self.matcher:
+            return self.matcher.match_file(rel_path)
+        
         return False
 
     def generate_tree(
