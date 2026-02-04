@@ -6,9 +6,21 @@ from unittest.mock import Mock, patch
 
 @pytest.fixture
 def ai_enabled_profile():
-    """Profile with AI auto mode enabled."""
+    """Profile with AI auto mode enabled (using new auto_send key)."""
     return {
         "description": "Test AI profile",
+        "pre": ["Test instruction"],
+        "post": "Test task",
+        "model": "claude-3-5-sonnet-latest",
+        "auto_send": True
+    }
+
+
+@pytest.fixture
+def ai_enabled_profile_legacy():
+    """Profile with AI auto mode enabled (using legacy auto key)."""
+    return {
+        "description": "Test AI profile (legacy)",
         "pre": ["Test instruction"],
         "post": "Test task",
         "model": "claude-sonnet-4-5-20250929",
@@ -166,3 +178,76 @@ class TestAutoModeIntegration:
             call_args = MockEngine.call_args
             settings = call_args[0][1]
             assert settings.model_override == "claude-opus-4-5-20251101"
+
+
+def test_settings_factory_resolves_renamed_key(tmp_path):
+    """Ensure the engine correctly interprets the auto_send key from config."""
+    from dumpcode.core import DumpSettings
+    import argparse
+
+    args = argparse.Namespace(
+        auto=False, no_auto=False, test_profile=True,
+        output_file="out.txt", level=None, dir_only=False,
+        ignore_errors=False, structure_only=False, no_copy=True,
+        changed=False, question=None, reset_version=False,
+        verbose=False, model=None, no_xml=False
+    )
+
+    config = {
+        "profiles": {
+            "test_profile": {"description": "Test", "auto_send": True, "model": "sonnet"}
+        }
+    }
+
+    settings = DumpSettings.from_arguments(args, config, tmp_path)
+    assert settings.auto_mode is True
+
+
+def test_settings_factory_resolves_legacy_key(tmp_path):
+    """Ensure the engine correctly interprets the legacy auto key from config."""
+    from dumpcode.core import DumpSettings
+    import argparse
+
+    args = argparse.Namespace(
+        auto=False, no_auto=False, legacy_profile=True,
+        output_file="out.txt", level=None, dir_only=False,
+        ignore_errors=False, structure_only=False, no_copy=True,
+        changed=False, question=None, reset_version=False,
+        verbose=False, model=None, no_xml=False
+    )
+
+    config = {
+        "profiles": {
+            "legacy_profile": {"description": "Legacy", "auto": True, "model": "gpt-4"}
+        }
+    }
+
+    settings = DumpSettings.from_arguments(args, config, tmp_path)
+    assert settings.auto_mode is True
+
+
+def test_settings_auto_send_takes_precedence_over_auto(tmp_path):
+    """Ensure auto_send takes precedence when both keys exist."""
+    from dumpcode.core import DumpSettings
+    import argparse
+
+    args = argparse.Namespace(
+        auto=False, no_auto=False, mixed_profile=True,
+        output_file="out.txt", level=None, dir_only=False,
+        ignore_errors=False, structure_only=False, no_copy=True,
+        changed=False, question=None, reset_version=False,
+        verbose=False, model=None, no_xml=False
+    )
+
+    config = {
+        "profiles": {
+            "mixed_profile": {
+                "description": "Mixed",
+                "auto": True,  # Legacy key says True
+                "auto_send": False  # New key says False - should win
+            }
+        }
+    }
+
+    settings = DumpSettings.from_arguments(args, config, tmp_path)
+    assert settings.auto_mode is False  # auto_send takes precedence

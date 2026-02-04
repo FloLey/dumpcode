@@ -104,6 +104,12 @@ def load_or_create_config(
                 config.update(loaded_config)
                 if "profiles" in loaded_config:
                     config["profiles"] = {**DEFAULT_PROFILES, **loaded_config["profiles"]}
+
+                # MIGRATION: Transparently rename 'auto' to 'auto_send'
+                if "profiles" in config:
+                    for profile in config["profiles"].values():
+                        if "auto" in profile and "auto_send" not in profile:
+                            profile["auto_send"] = profile.pop("auto")
         except Exception as e:
             if logger:
                 logger.warning(f"Failed to read config: {e}")

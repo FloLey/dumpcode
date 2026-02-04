@@ -1,5 +1,5 @@
 {
-    "version": 53,
+    "version": 55,
     "ignore_patterns": [
         ".dump_config.json",
         ".git",
@@ -54,7 +54,7 @@
             ],
             "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document.",
             "model": "claude-sonnet-4-5-20250929",
-            "auto": true
+            "auto_send": true
         },
         "cleanup": {
             "description": "Clean code: formatting, docstrings, unused imports (Runs ruff & mypy)",
@@ -84,7 +84,7 @@
             ],
             "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved.",
             "model": "gemini-3-flash-preview",
-            "auto": true
+            "auto_send": true
         },
         "optimize": {
             "description": "Identify bottlenecks and suggest performance improvements",
@@ -102,7 +102,7 @@
             ],
             "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation.",
             "model": "deepseek-reasoner",
-            "auto": false
+            "auto_send": false
         },
         "architect": {
             "description": "Generate a Project Roadmap & Specification (PLAN.md)",
@@ -120,7 +120,7 @@
             ],
             "post": "Output the content in Markdown format. This will be used to update the project PLAN.md.",
             "model": "claude-sonnet-4-5-20250929",
-            "auto": false
+            "auto_send": false
         },
         "plan-next": {
             "description": "Sync PLAN.md with code; stop if finished",
@@ -142,7 +142,7 @@
                 "Ensure codeblocks are syntactically correct."
             ],
             "model": "gpt-5.2",
-            "auto": true
+            "auto_send": true
         },
         "refactor": {
             "description": "Suggest architectural improvements and code cleanups",
@@ -158,7 +158,7 @@
             ],
             "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes.",
             "model": "claude-sonnet-4-5-20250929",
-            "auto": false
+            "auto_send": false
         },
         "coverage": {
             "description": "Run coverage report and plan tests for missing lines",
@@ -187,7 +187,7 @@
                 "- [ ] `test_new_feature`: [Description of what to test]"
             ],
             "model": "deepseek-chat",
-            "auto": true
+            "auto_send": true
         },
         "test-fixer": {
             "description": "Run tests (verbose) and plan fixes for failures",
@@ -220,7 +220,7 @@
                 "- Command to verify the fix"
             ],
             "model": "gemini-3-flash-preview",
-            "auto": true
+            "auto_send": true
         }
     },
     "use_xml": true

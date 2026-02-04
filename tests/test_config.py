@@ -7,13 +7,13 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from dumpcode.config import (
-    load_or_create_config, 
-    interactive_init, 
-    increment_config_version, 
+    load_or_create_config,
+    interactive_init,
+    increment_config_version,
     validate_config,
     is_safe_to_create_config
 )
-from dumpcode.constants import CONFIG_FILENAME, DEFAULT_PROFILES
+from dumpcode.constants import CONFIG_FILENAME, DEFAULT_PROFILES, DEFAULT_MODEL
 
 
 class TestConfigLoading:
@@ -116,6 +116,68 @@ class TestConfigLoading:
         assert "profiles" in config
         assert "test" in config["profiles"]
         assert "readme" in config["profiles"]
+
+
+def test_interactive_init_creates_ai_fields(tmp_path):
+    """Verify that init generates a config with auto_send=False and Sonnet."""
+    # Mock inputs for standard questions
+    with patch('builtins.input', side_effect=['', 'y']):
+        interactive_init(tmp_path)
+
+    config_path = tmp_path / CONFIG_FILENAME
+    with open(config_path, "r") as f:
+        data = json.load(f)
+
+    # Check a representative profile (e.g., readme)
+    readme_profile = data["profiles"]["readme"]
+    assert readme_profile["auto_send"] is False
+    assert readme_profile["model"] == DEFAULT_MODEL
+
+
+def test_config_migration_on_load(tmp_path):
+    """Verify that old 'auto' keys are converted to 'auto_send' upon loading."""
+    legacy_config = {
+        "version": 1,
+        "profiles": {
+            "legacy_prof": {
+                "description": "Legacy profile",
+                "auto": True,
+                "model": "gpt-4"
+            }
+        }
+    }
+    (tmp_path / CONFIG_FILENAME).write_text(json.dumps(legacy_config))
+
+    # Loading the config should trigger migration
+    config = load_or_create_config(tmp_path)
+
+    profile = config["profiles"]["legacy_prof"]
+    assert "auto_send" in profile
+    assert profile["auto_send"] is True
+    assert "auto" not in profile  # Should be popped
+
+
+def test_config_migration_preserves_auto_send(tmp_path):
+    """Verify that migration doesn't overwrite existing auto_send."""
+    config_with_both = {
+        "version": 1,
+        "profiles": {
+            "mixed_prof": {
+                "description": "Profile with both keys",
+                "auto": True,
+                "auto_send": False  # Explicit auto_send should be preserved
+            }
+        }
+    }
+    (tmp_path / CONFIG_FILENAME).write_text(json.dumps(config_with_both))
+
+    config = load_or_create_config(tmp_path)
+
+    profile = config["profiles"]["mixed_prof"]
+    # auto_send was already present, should keep its value
+    assert profile["auto_send"] is False
+    # 'auto' should still exist since migration only runs when auto_send is absent
+    assert "auto" in profile
 
 
 def test_interactive_init_flow(tmp_path, capsys):

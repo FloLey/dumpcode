@@ -37,7 +37,9 @@ def project_env(tmp_path):
         "profiles": {
             "test-profile": {
                 "description": "Test profile for testing",
-                "run_commands": ["echo 'test command'"]
+                "run_commands": ["echo 'test command'"],
+                "model": "claude-3-5-sonnet-latest",
+                "auto_send": False
             }
         }
     }

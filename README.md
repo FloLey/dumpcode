@@ -61,8 +61,8 @@ Profiles are defined in `.dump_config.json` and automatically become CLI flags.
       ],
       "post": "List all security issues by severity (Critical/High/Medium/Low).",
       "run_commands": ["bandit -r src/"],
-      "model": "claude-sonnet-4-5-20250929",
-      "auto": true
+      "model": "claude-3-5-sonnet-latest",
+      "auto_send": true
     }
   }
 }
@@ -81,8 +81,8 @@ dumpcode --security-audit
 | `pre` | No | String or List | Instructions placed before code context |
 | `post` | No | String or List | Task placed after code context |
 | `run_commands` | No | List | Shell commands to execute (output captured in `<execution>`) |
-| `model` | No | String | AI model to use (e.g., `claude-sonnet-4-5-20250929`) |
-| `auto` | No | Boolean | If `true`, automatically sends to AI after generation |
+| `model` | No | String | AI model to use (e.g., `claude-3-5-sonnet-latest`) |
+| `auto_send` | No | Boolean | If `true`, automatically sends to AI after generation |
 
 **Note:** Profile names with underscores (`my_profile`) become flags with hyphens (`--my-profile`).
 
@@ -268,8 +268,8 @@ See [Creating Custom Profiles](#-creating-custom-profiles) above.
       "pre": ["Act as a Rust Expert.", "Analyze memory safety."],
       "post": "Suggest refactoring for the borrow checker.",
       "run_commands": ["cargo check"],
-      "model": "claude-sonnet-4-5-20250929",
-      "auto": true
+      "model": "claude-3-5-sonnet-latest",
+      "auto_send": true
     }
   },
   "use_xml": true

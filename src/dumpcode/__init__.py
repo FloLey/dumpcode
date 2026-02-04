@@ -16,7 +16,7 @@ from .processors import (
 from .utils import copy_to_clipboard_osc52, estimate_tokens, get_git_modified_files
 from .writer import DumpWriter
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 __all__ = [
     "parse_arguments_with_profiles",

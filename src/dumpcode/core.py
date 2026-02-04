@@ -69,12 +69,13 @@ class DumpSettings:
 
         # 2. Resolve AI Auto Mode
         auto_mode = False
-        if args.no_auto: 
+        if args.no_auto:
             auto_mode = False
-        elif args.auto: 
+        elif args.auto:
             auto_mode = True
-        elif active_profile: 
-            auto_mode = active_profile.get("auto", False)
+        elif active_profile:
+            # Check 'auto_send' first, then legacy 'auto'
+            auto_mode = active_profile.get("auto_send", active_profile.get("auto", False))
 
         # 3. Return the instance
         return cls(

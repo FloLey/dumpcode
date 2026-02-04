@@ -2,6 +2,9 @@
 
 CONFIG_FILENAME = ".dump_config.json"
 
+# Updated default model baseline
+DEFAULT_MODEL = "claude-3-5-sonnet-latest"
+
 DEFAULT_PRE = [
     "Act as an expert software developer and system architect."
 ]
@@ -49,8 +52,8 @@ DEFAULT_PROFILES = {
             "- Accuracy: Only document what is present in the code. Do not invent capabilities."
         ],
         "post": "Output the result in raw Markdown format. Ensure the 'Workflow' and 'Philosophy' sections are the most detailed parts of the document.",
-        "model": "claude-sonnet-4-5-20250929",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "cleanup": {
         "description": "Clean code: formatting, docstrings, unused imports (Runs ruff & mypy)",
@@ -79,8 +82,8 @@ DEFAULT_PROFILES = {
             "CRITICAL: Be conservative. If a file is clean and passes linters, state 'No changes needed'."
         ],
         "post": "Provide the changes in unified diff format or full file rewrites where necessary. Explicitly mention which Linter errors were resolved.",
-        "model": "gemini-3-flash-preview",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "optimize": {
         "description": "Identify bottlenecks and suggest performance improvements",
@@ -97,8 +100,8 @@ DEFAULT_PROFILES = {
             "If no significant bottlenecks exist, explicitly state 'No optimizations needed'."
         ],
         "post": "Output a numbered list of optimizations ordered by impact (High/Medium/Low). Follow each point with a specific code snippet showing the optimized implementation.",
-        "model": "deepseek-reasoner",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "architect": {
         "description": "Generate a Project Roadmap & Specification (PLAN.md)",
@@ -115,8 +118,8 @@ DEFAULT_PROFILES = {
             "5. **Tech Debt**: Areas that need refactoring (identified from the code)."
         ],
         "post": "Output the content in Markdown format. This will be used to update the project PLAN.md.",
-        "model": "claude-sonnet-4-5-20250929",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "plan-next": {
         "description": "Sync PLAN.md with code; stop if finished",
@@ -137,8 +140,8 @@ DEFAULT_PROFILES = {
             "If tasks remain, follow the plan with a 'Developer Specification' section for the very next task.",
             "Ensure codeblocks are syntactically correct."
         ],
-        "model": "gpt-5.2",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "refactor": {
         "description": "Suggest architectural improvements and code cleanups",
@@ -153,8 +156,8 @@ DEFAULT_PROFILES = {
             "3. If the current implementation is simple, effective, and maintainable, explicitly state 'No architectural changes needed'."
         ],
         "post": "Provide a list of recommended refactors, ranked by impact (High/Medium/Low). Include specific code snippets or patterns for the most critical changes.",
-        "model": "claude-sonnet-4-5-20250929",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "coverage": {
         "description": "Run coverage report and plan tests for missing lines",
@@ -182,8 +185,8 @@ DEFAULT_PROFILES = {
             "## Proposed Tests",
             "- [ ] `test_new_feature`: [Description of what to test]"
         ],
-        "model": "deepseek-chat",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     },
     "test-fixer": {
         "description": "Run tests (verbose) and plan fixes for failures",
@@ -215,7 +218,7 @@ DEFAULT_PROFILES = {
             "## Verification",
             "- Command to verify the fix"
         ],
-        "model": "gemini-3-flash-preview",
-        "auto": True
+        "model": DEFAULT_MODEL,
+        "auto_send": False
     }
 }
