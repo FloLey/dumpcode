@@ -106,9 +106,10 @@ def load_or_create_config(
                     config["profiles"] = {**DEFAULT_PROFILES, **loaded_config["profiles"]}
 
                 # MIGRATION: Transparently rename 'auto' to 'auto_send'
-                if "profiles" in config:
-                    for profile in config["profiles"].values():
-                        if "auto" in profile and "auto_send" not in profile:
+                profiles = config.get("profiles")
+                if isinstance(profiles, dict):
+                    for profile in profiles.values():
+                        if isinstance(profile, dict) and "auto" in profile and "auto_send" not in profile:
                             profile["auto_send"] = profile.pop("auto")
         except Exception as e:
             if logger:
