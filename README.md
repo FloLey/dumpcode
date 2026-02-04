@@ -300,8 +300,8 @@ See [Creating Custom Profiles](#-creating-custom-profiles) above.
 
 DumpCode was created using the exact workflow it implements—a recursive loop where the tool improved itself by being used on its own codebase.
 
-1.  **Initial Problem:** I needed a way to paste code into Gemini reliably.
-2.  **The Sandwich:** I realized LLMs hallucinate less when instructions come *before* code and tasks come *after*, and I was using variations of the same prompts over and over again.
+1.  **Initial Problem:** I needed a way to paste code into Gemini reliably, and I was using variations of the same prompts over and over again.
+2.  **The Sandwich:** I realized LLMs hallucinate less when instructions come *before* code and tasks come *after*.
 3.  **Self-Refinement:** Every feature (Git integration, XML tags, Auto-Mode) was added because I needed it while using DumpCode to build DumpCode.
 
 This recursive pattern created a virtuous cycle: DumpCode demonstrates its own value by being the primary tool used to build itself.
