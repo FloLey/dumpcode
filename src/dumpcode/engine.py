@@ -137,22 +137,38 @@ class DumpEngine:
 
     def _initialize_session(self, output_file: Path) -> DumpSession:
         """Initialize the DumpSession with exclusion patterns and filesystem metadata.
-        
+
+        Merges top-level ignore/include patterns with active profile's additional
+        excludes/includes to build effective lists passed to the session.
+
         Args:
             output_file: Path to the target output file
-            
+
         Returns:
             A configured DumpSession instance
         """
         excluded = set(self.config.get("ignore_patterns", []))
         self._exclude_output_file(output_file, excluded)
-        
+
+        profile = self._get_active_profile()
+        if profile:
+            additional_excludes = profile.get("additional_excludes", [])
+            if isinstance(additional_excludes, list):
+                excluded.update(additional_excludes)
+
+        effective_includes = list(self.config.get("include_patterns", []))
+        if profile:
+            additional_includes = profile.get("additional_includes", [])
+            if isinstance(additional_includes, list):
+                effective_includes.extend(additional_includes)
+
         return self.session_cls(
             self.settings.start_path,
             excluded,
             self.settings.max_depth,
             self.settings.dir_only,
-            self.settings.git_changed_only
+            self.settings.git_changed_only,
+            included_patterns=effective_includes,
         )
     
     def _write_instructions_block(self, writer: DumpWriter, profile: Optional[Dict[str, Any]]) -> None:

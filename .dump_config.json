@@ -20,6 +20,7 @@
         ".ruff_cache",
         "ai_response.md"
     ],
+    "include_patterns": [],
     "profiles": {
         "readme": {
             "description": "Generate a professional, architect-level README.md for the current project",
