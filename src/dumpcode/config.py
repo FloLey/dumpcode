@@ -17,6 +17,7 @@ DEFAULT_CONFIG = {
         ".mypy_cache", ".ruff_cache",
         "ai_response.md",
     ],
+    "include_patterns": [],
     "profiles": DEFAULT_PROFILES,
     "use_xml": True
 }
@@ -24,10 +25,10 @@ DEFAULT_CONFIG = {
 
 def validate_config(config: Dict) -> bool:
     """Basic structural check for configuration.
-    
+
     Args:
         config: Configuration dictionary to validate
-        
+
     Returns:
         True if config has valid structure, False otherwise
     """
@@ -36,20 +37,35 @@ def validate_config(config: Dict) -> bool:
 
     if not isinstance(config["version"], int):
         return False
-    
+
+    if "include_patterns" in config:
+        if not isinstance(config["include_patterns"], list):
+            return False
+
     profiles = config.get("profiles")
     if not isinstance(profiles, dict):
         return False
-    
+
     for name, body in profiles.items():
         if not isinstance(body, dict):
             return False
-        
-        valid_keys = {"description", "pre", "post", "run_commands"}
-        
+
+        valid_keys = {
+            "description", "pre", "post", "run_commands",
+            "additional_excludes", "additional_includes",
+        }
+
         if not any(key in body for key in valid_keys):
             return False
-    
+
+        if "additional_excludes" in body:
+            if not isinstance(body["additional_excludes"], list):
+                return False
+
+        if "additional_includes" in body:
+            if not isinstance(body["additional_includes"], list):
+                return False
+
     return True
 
 

@@ -1,5 +1,6 @@
 """Core dumping logic, file system traversal, and session management."""
 
+import fnmatch
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -132,6 +133,7 @@ class DumpSession:
         max_depth: Optional[int],
         dir_only: bool,
         git_changed_only: bool = False,
+        included_patterns: Optional[List[str]] = None,
     ) -> None:
         """Initialize the session with scanning constraints.
 
@@ -141,12 +143,14 @@ class DumpSession:
             max_depth: Depth limit for directory traversal.
             dir_only: If True, skip file contents.
             git_changed_only: If True, only include files modified in git.
+            included_patterns: Patterns that override exclusions (force-include).
         """
         self.root_path = root_path
         self.excluded_patterns = excluded_patterns
         self.max_depth = max_depth
         self.dir_only = dir_only
         self.git_changed_only = git_changed_only
+        self.included_patterns = list(included_patterns) if included_patterns else []
 
         self.dir_count = 0
         self.file_count = 0
@@ -155,6 +159,7 @@ class DumpSession:
         self.skipped_files: List[Dict[str, str]] = []
         self.visited_paths: Set[Path] = set()
         self.matcher = self._create_combined_matcher(root_path, excluded_patterns)
+        self.include_matcher = self._create_include_matcher(self.included_patterns)
 
     def _load_gitignore_lines(self, root_path: Path) -> List[str]:
         """Load .gitignore file lines.
@@ -201,6 +206,63 @@ class DumpSession:
         except ImportError:
             return None
 
+    def _create_include_matcher(self, included_patterns: List[str]) -> Any:
+        """Create a pathspec matcher for include override patterns.
+
+        Args:
+            included_patterns: List of glob patterns to force-include.
+
+        Returns:
+            A pathspec.PathSpec instance if pathspec is available, otherwise None.
+        """
+        if not included_patterns:
+            return None
+
+        try:
+            import pathspec
+            return pathspec.PathSpec.from_lines('gitignore', included_patterns)
+        except ImportError:
+            return None
+
+    def _is_force_included(self, rel_path: str, is_dir: bool = False) -> bool:
+        """Check if a path should be force-included despite matching exclusion patterns.
+
+        Checks direct pathspec matching for files and directories. For directories,
+        additionally checks whether the path is an ancestor of any include pattern
+        (to allow traversal into excluded directories that contain force-included files).
+
+        Args:
+            rel_path: The relative path (POSIX format) to check.
+            is_dir: Whether the path is a directory.
+
+        Returns:
+            True if the path matches any include override pattern.
+        """
+        if self.include_matcher and self.include_matcher.match_file(rel_path):
+            return True
+
+        if is_dir and self.included_patterns:
+            rel_parts = rel_path.split("/")
+            for pattern in self.included_patterns:
+                pattern_parts = pattern.split("/")
+                if len(pattern_parts) <= len(rel_parts) and "**" not in pattern_parts:
+                    continue
+                match = True
+                for i, rel_part in enumerate(rel_parts):
+                    if i >= len(pattern_parts):
+                        match = False
+                        break
+                    pat_part = pattern_parts[i]
+                    if pat_part == "**":
+                        break
+                    if not fnmatch.fnmatch(rel_part, pat_part):
+                        match = False
+                        break
+                if match:
+                    return True
+
+        return False
+
     def log_skip(self, path: Path, reason: str) -> None:
         """Log a file that was skipped during processing.
 
@@ -211,23 +273,30 @@ class DumpSession:
         self.skipped_files.append({"path": str(path), "reason": reason})
 
     def is_excluded(self, item_path: Path) -> bool:
-        """Check if a path should be ignored based on patterns and gitignore.
+        """Check if a path should be ignored based on patterns, gitignore, and includes.
+
+        Evaluates exclusion rules first (built-in excludes, ignore_patterns, gitignore,
+        profile additional_excludes), then checks include overrides. Include patterns
+        are last-wins: if a path is excluded but matches an include pattern, it is
+        included.
 
         Args:
             item_path: The path to check for exclusion.
 
         Returns:
-            True if the path matches exclusion patterns, False otherwise.
+            True if the path matches exclusion patterns and is not force-included.
         """
         if item_path.name == CONFIG_FILENAME:
             return True
 
         rel_path = item_path.relative_to(self.root_path).as_posix()
-        
-        if self.matcher:
-            return self.matcher.match_file(rel_path)
-        
-        return False
+
+        excluded = self.matcher.match_file(rel_path) if self.matcher else False
+
+        if excluded and self._is_force_included(rel_path, is_dir=item_path.is_dir()):
+            return False
+
+        return excluded
 
     def generate_tree(
         self,
