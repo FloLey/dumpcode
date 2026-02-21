@@ -47,8 +47,8 @@ MODEL_CATALOG: Dict[str, ModelConfig] = {
     # --- Google ---
     # Google uses its own SDK methods, so this param is informative/unused for now but good for consistency
     "gemini-3-pro-preview": {
-        "provider": "google", "model_id": "gemini-3-pro-preview", "context": 1048576, "label": "Gemini 3 Pro",
-        "token_param": "max_output_tokens" 
+        "provider": "google", "model_id": "gemini-3-pro-preview", "context": 1048576, "label": "Gemini 3 Pro Preview",
+        "token_param": "max_output_tokens"
     },
     "gemini-2.5-pro": {
         "provider": "google", "model_id": "gemini-2.5-pro", "context": 1048576, "label": "Gemini 2.5 Pro",
