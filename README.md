@@ -1,310 +1,490 @@
-# DumpCode: The Semantic Context Engine for LLM-Native Development
+# DumpCode
 
-**A professional-grade codebase dumper that transforms your project into structured, LLM-ready prompts. DumpCode treats your code as a semantic hierarchy, wrapping it in XML and grounding it via a "Sandwich Architecture" to maximize the reasoning capabilities of Large Language Models.**
+**Turn your codebase into a structured, LLM-ready prompt in one command.**
 
----
-
-## 🧠 The Philosophy: Why the Sandwich Architecture Exists
-
-Large Language Models excel at reasoning when given **clear boundaries between instructions, data, and tasks**. DumpCode enforces a three-layer "Sandwich Architecture" that prevents context drift and hallucinations by establishing a strict logical flow:
-
-### Layer 1: The Instructions (`<instructions>`)
-**The Top Bun** - Sets the persona and architectural rules *before* the model sees any code.
-*   **Role Definition:** e.g., "Act as a Senior Technical Writer and System Architect."
-*   **Rules of Engagement:** e.g., "A README is not just a CLI reference; it is the project's manifesto."
-
-### Layer 2: The Context (`<dump>`)
-**The Filling** - A semantic XML representation of your entire project.
-*   **Visual Tree Structure (`<tree>`):** ASCII directory hierarchy showing project organization.
-*   **File Contents (`<files>`):** Source code wrapped in semantic tags.
-*   **Execution Diagnostics (`<execution>`):** Live output from linters, test suites, or shell commands.
-
-### Layer 3: The Task (`<task>`)
-**The Bottom Bun** - The specific trigger or question placed *after* full context is loaded.
-*   **The Ask:** e.g., "Generate a README.md."
-*   **Why last?** By placing the request at the very end, we ensure the LLM has fully parsed the codebase context before attempting a response.
+DumpCode scans your project, builds a semantic XML representation of your files and directory structure, and wraps it in a "Sandwich Architecture" prompt — instructions before, task after — so your LLM has full context before it answers.
 
 ---
 
-## 🤖 AI Agents: Your Virtual Engineering Team
+## Table of Contents
 
-DumpCode comes with a suite of pre-configured profiles defined in `.dump_config.json`. Each profile adjusts the "Sandwich" to change the LLM's persona and goals.
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [How It Works](#how-it-works)
+- [CLI Reference](#cli-reference)
+- [Configuration](#configuration)
+- [Profiles](#profiles)
+- [Built-in Profiles](#built-in-profiles)
+- [AI Integration](#ai-integration)
+- [Workflow Guide](#workflow-guide)
 
-| Profile Flag | Role | Primary Function |
-| :--- | :--- | :--- |
-| `--architect` | System Designer | Creates a master `PLAN.md` specification. |
-| `--plan-next` | Project Manager | Syncs code with `PLAN.md` and defines the next task. |
-| `--readme` | Technical Writer | Generates professional, architect-level documentation. |
-| `--cleanup` | Code Reviewer | Runs `ruff`/`mypy` and asks the LLM to fix errors. |
-| `--test-fixer` | QA Engineer | Runs `pytest`, ingests failures, and plans repairs. |
-| `--refactor` | Senior Dev | Identifies SOLID violations and "code smells." |
-| `--optimize` | Perf Engineer | Locates algorithmic inefficiencies and bottlenecks. |
-| `--coverage` | SDET | Runs coverage reports and identifies untested logic. |
+---
 
-## 📝 Creating Custom Profiles
+## Installation
 
-Profiles are defined in `.dump_config.json` and automatically become CLI flags.
+### From GitHub
 
-### Adding a New Profile
+```bash
+# Core tool only (clipboard, dump, profiles — no AI auto-send)
+pip install git+https://github.com/FloLey/dumpcode.git
 
-1. **Edit `.dump_config.json`** in your project root
-2. **Add your profile** under the `"profiles"` key:
+# With AI support (auto-send to Claude, Gemini, GPT, DeepSeek)
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[ai]"
+
+# With a single provider
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[claude]"
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[gemini]"
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[openai]"
+pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[deepseek]"
+```
+
+### From Source
+
+```bash
+git clone https://github.com/FloLey/dumpcode.git
+cd dumpcode
+pip install -e ".[ai]"
+```
+
+**Requirements:** Python 3.9+
+
+---
+
+## Quick Start
+
+```bash
+# Dump the current directory to clipboard
+dumpcode
+
+# Dump a specific directory
+dumpcode /path/to/project
+
+# Dump and automatically send to Claude
+dumpcode --cleanup --auto
+```
+
+DumpCode writes the output to `codebase_dump.txt` and copies it to your clipboard via OSC52 (works over SSH, Docker, and remote dev containers).
+
+### First-time setup
+
+```bash
+# Initialize a project config (creates .dump_config.json)
+dumpcode --init
+
+# Create a .env for AI API keys
+cat > .env << 'EOF'
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+GOOGLE_API_KEY=AIzaSyxxxxx
+OPENAI_API_KEY=sk-xxxxx
+DEEPSEEK_API_KEY=sk-xxxxx
+EOF
+```
+
+---
+
+## How It Works
+
+DumpCode generates a three-layer prompt called the **Sandwich Architecture**:
+
+```
+┌─────────────────────────────────────────┐
+│  <instructions>                         │  ← Layer 1: Who the LLM is
+│    Act as a Senior Python Developer...  │
+│  </instructions>                        │
+├─────────────────────────────────────────┤
+│  <dump version="42">                    │  ← Layer 2: Your codebase
+│    <tree>...</tree>                     │
+│    <files>                              │
+│      <file path="src/main.py">...</file>│
+│    </files>                             │
+│    <execution>ruff output...</execution>│
+│  </dump>                                │
+├─────────────────────────────────────────┤
+│  <task>                                 │  ← Layer 3: What you want
+│    Fix the type errors above.           │
+│  </task>                                │
+└─────────────────────────────────────────┘
+```
+
+**Why this order matters:** By placing instructions before the code and the task after, the LLM reads your rules and context before it forms a response. This reduces hallucinations and produces more grounded, accurate answers.
+
+---
+
+## CLI Reference
+
+### Basic usage
+
+```bash
+dumpcode [startpath] [options]
+```
+
+`startpath` defaults to `.` (current directory).
+
+### Scanning options
+
+| Flag | Description |
+|:-----|:------------|
+| `--changed` | Only include files modified in git (staged or unstaged). Useful when you want to focus the LLM on your current work. |
+| `-L N` | Limit directory traversal to N levels deep. |
+| `--structure-only` | Include the directory tree but omit file contents. |
+| `-d`, `--dir-only` | Include only directories in the tree, no files at all. |
+| `--ignore-errors` | Suppress encoding/read errors for files that can't be decoded. |
+
+### Output options
+
+| Flag | Description |
+|:-----|:------------|
+| `-o FILE` | Write output to `FILE` instead of `codebase_dump.txt`. |
+| `--no-copy` | Don't copy to clipboard via OSC52. |
+| `--no-xml` | Use plain text delimiters instead of XML tags. Not recommended for LLM use. |
+| `--reset-version` | Reset the version counter in `.dump_config.json` to 1. |
+| `-v`, `--verbose` | Show detailed per-file processing logs. |
+
+### AI options
+
+| Flag | Description |
+|:-----|:------------|
+| `--auto` | Force auto-send to AI after generating the dump. |
+| `--no-auto` | Disable auto-send even if the active profile has `auto_send: true`. |
+| `--model ID` | Override the AI model for this run (e.g. `claude-sonnet-4-5-20250929`). |
+
+### Meta commands
+
+| Flag | Description |
+|:-----|:------------|
+| `--init` | Interactive setup — creates `.dump_config.json` in the current directory. |
+| `--new-plan [FILE\|-]` | Write or update `PLAN.md`. Pass `-` to read from stdin (paste mode). |
+| `--change-profile INSTRUCTION` | Generate a prompt to modify `.dump_config.json` via an LLM. |
+| `-q TEXT` | Append a custom question/task to the prompt (overrides the profile's `post`). |
+| `--test-models` | Run parallel connectivity tests for all configured AI providers. |
+
+### Profile flags
+
+Every profile defined in `.dump_config.json` becomes a CLI flag automatically:
+
+```bash
+dumpcode --readme        # built-in: generate README
+dumpcode --cleanup       # built-in: run linters and fix errors
+dumpcode --my-profile    # custom: any profile you've defined
+```
+
+Profile names use hyphens on the CLI: a profile named `security_audit` becomes `--security-audit`.
+
+---
+
+## Configuration
+
+DumpCode stores project settings in `.dump_config.json` in your project root. Run `dumpcode --init` to create it interactively, or create it manually.
+
+### Full schema
+
+```json
+{
+  "version": 1,
+  "use_xml": true,
+  "ignore_patterns": ["venv", "*.pyc", "node_modules"],
+  "include_patterns": [],
+  "profiles": {}
+}
+```
+
+### `version` (integer)
+
+Auto-incremented after each successful dump. Appears in the `<dump version="N">` tag so you can track which iteration the LLM is responding to. Reset with `--reset-version`.
+
+### `use_xml` (boolean, default: `true`)
+
+Controls whether the output uses semantic XML tags (`<dump>`, `<files>`, `<task>`, etc.) or plain text delimiters. Keep this `true` for LLM use — the tags help models identify and separate sections.
+
+### `ignore_patterns` (array of strings)
+
+Glob patterns to exclude from the dump. Merged with your `.gitignore` (if present).
+
+```json
+"ignore_patterns": [
+  ".git",
+  "__pycache__",
+  "*.pyc",
+  "venv",
+  ".env",
+  "node_modules",
+  "dist",
+  "*.log"
+]
+```
+
+Patterns follow gitignore syntax: wildcards (`*.pyc`), directories (`venv/`), and paths (`src/tests/*.snap`) all work.
+
+**Note:** `.dump_config.json` itself is always excluded regardless of patterns.
+
+### `include_patterns` (array of strings)
+
+Glob patterns that **override** `ignore_patterns` and `.gitignore`. If a file matches an include pattern, it is included even if it would otherwise be excluded.
+
+This is useful when you have a directory in `.gitignore` that you still want to dump:
+
+```json
+"include_patterns": ["config/secrets.example.json"]
+```
+
+---
+
+## Profiles
+
+A profile is a named configuration that sets the LLM persona (`pre`), the task (`post`), optional shell commands to run (`run_commands`), and file filtering overrides. Profiles become CLI flags automatically.
+
+### Profile fields
+
+| Field | Type | Description |
+|:------|:-----|:------------|
+| `description` | string | Help text shown in `--help`. |
+| `pre` | string or array | Instructions placed before the code context (Layer 1). Sets the LLM's role and rules. |
+| `post` | string or array | Task placed after the code context (Layer 3). What you want the LLM to do. |
+| `run_commands` | array | Shell commands to run before the LLM task. Output is captured into an `<execution>` block in the dump. |
+| `model` | string | Default AI model for this profile when using `--auto`. |
+| `auto_send` | boolean | If `true`, automatically sends to AI when this profile is active (same as passing `--auto`). |
+| `additional_excludes` | array | Extra glob patterns to exclude, on top of global `ignore_patterns`. Applied only when this profile is active. |
+| `additional_includes` | array | Extra glob patterns to force-include, on top of global `include_patterns`. Applied only when this profile is active. |
+
+### `additional_excludes` and `additional_includes`
+
+These are per-profile file filtering overrides. They let you narrow or expand the file set for a specific task without changing global settings.
+
+**Example — a profile that only looks at tests:**
+
+```json
+"test-review": {
+  "description": "Review only the test suite",
+  "pre": "Act as a QA Engineer. Review the test coverage and quality.",
+  "post": "List gaps and suggest improvements.",
+  "additional_excludes": ["src/"],
+  "additional_includes": ["tests/"]
+}
+```
+
+**Example — a profile that includes normally-ignored fixtures:**
+
+```json
+"fixture-audit": {
+  "description": "Audit test fixtures including large data files",
+  "pre": "Act as a Data Engineer.",
+  "post": "Identify any stale or inconsistent fixtures.",
+  "additional_includes": ["tests/fixtures/"]
+}
+```
+
+`additional_includes` follows the same last-wins rule as global `include_patterns`: a path that matches an include pattern is included even if it matches an exclude pattern.
+
+### Defining a custom profile
+
+Add it to the `"profiles"` section of `.dump_config.json`:
 
 ```json
 {
   "profiles": {
     "security-audit": {
-      "description": "Security vulnerability scanner",
+      "description": "Scan for common vulnerabilities",
       "pre": [
         "Act as a Security Engineer.",
-        "Analyze the code for common vulnerabilities (SQL injection, XSS, etc.)"
+        "Look for SQL injection, XSS, path traversal, and insecure defaults."
       ],
-      "post": "List all security issues by severity (Critical/High/Medium/Low).",
-      "run_commands": ["bandit -r src/"],
+      "post": "List all findings by severity: Critical / High / Medium / Low.",
+      "run_commands": ["bandit -r src/ -q"],
       "model": "claude-3-5-sonnet-latest",
-      "auto_send": true
+      "auto_send": false
     }
   }
 }
 ```
 
-3. **Use it immediately:**
+Then use it:
+
 ```bash
 dumpcode --security-audit
+dumpcode --security-audit --auto
 ```
 
-### Profile Configuration Fields
-
-| Field | Required | Type | Description |
-|:------|:---------|:-----|:------------|
-| `description` | No | String | Help text shown in `--help` |
-| `pre` | No | String or List | Instructions placed before code context |
-| `post` | No | String or List | Task placed after code context |
-| `run_commands` | No | List | Shell commands to execute (output captured in `<execution>`) |
-| `model` | No | String | AI model to use (e.g., `claude-3-5-sonnet-latest`) |
-| `auto_send` | No | Boolean | If `true`, automatically sends to AI after generation |
-
-**Note:** Profile names with underscores (`my_profile`) become flags with hyphens (`--my-profile`).
+**Naming:** Profile names with underscores (`my_profile`) become flags with hyphens (`--my-profile`). Names that conflict with built-in flags are rejected with a warning.
 
 ---
 
-## 🔄 The Workflow: Spec-Driven Development Lifecycle
+## Built-in Profiles
 
-DumpCode is designed to facilitate a "Dump → Discuss → Plan → Implement" loop, keeping your project's `PLAN.md` as the single source of truth.
+DumpCode ships with eight profiles defined in `constants.py`. They are merged with any profiles in your `.dump_config.json` (your definitions win on conflicts).
 
-### Phase 1: Blueprinting (`--architect`)
-Generate a comprehensive project roadmap by dumping your current state with the architect persona.
+### `--readme`
 
-```bash
-dumpcode --architect -q "Create a master specification for a new plugin system."
-```
-
-### Phase 2: The Plan Sync (`--new-plan`)
-Once the LLM provides a roadmap, pipe it directly back into your repository using the safe, interactive "Paste Mode":
+Generates a professional README.md. Instructs the LLM to act as a Technical Writer, analyze the codebase architecture, and document both the "How" and the "Why".
 
 ```bash
-# Paste the LLM's Markdown, then hit Ctrl+D to save
-dumpcode --new-plan -
+dumpcode --readme
+dumpcode --readme --auto --model claude-3-5-sonnet-latest
 ```
 
-### Phase 3: Task Planning (`--plan-next`)
-The LLM compares your code against `PLAN.md`, marks completed tasks, and defines **exactly one** next milestone with technical specs.
+### `--architect`
+
+Generates a `PLAN.md` project specification. Instructs the LLM to act as a Product Manager and Software Architect, documenting current status, architecture, roadmap, missing features, and tech debt.
+
+```bash
+dumpcode --architect
+dumpcode --architect -q "Focus on the authentication subsystem."
+```
+
+### `--plan-next`
+
+Syncs `PLAN.md` with the current code. Marks completed tasks, removes obsolete ones, and defines exactly one next milestone. Stops with "PROJECT MILESTONES COMPLETE" when everything is done.
 
 ```bash
 dumpcode --plan-next
 ```
 
-### Phase 4: Focused QA & Implementation (`--changed`)
-**Don't waste tokens.** When fixing bugs or polishing code, you rarely need the entire codebase. Use `--changed` to dump only the files you have modified in Git (staged or unstaged) combined with other profiles.
+### `--cleanup`
 
-This is particularly powerful for the cleanup workflow:
+Runs `ruff check` and `mypy`, captures their output into `<execution>`, and instructs the LLM to fix every reported error plus any additional issues (dead code, missing docstrings).
 
 ```bash
-# Run linters and fix ONLY the files you just touched
-dumpcode --changed --cleanup
+dumpcode --cleanup
+dumpcode --changed --cleanup   # fix only the files you've modified
 ```
 
-**Why this works:**
-1.  DumpCode runs the linters (e.g., `ruff check .`) to capture all errors.
-2.  It restricts the file context (`<files>`) to only what you modified.
-3.  The LLM receives the linter errors for your changes + the source code for your changes.
-4.  The LLM generates a focused fix without being distracted by legacy code issues.
+### `--test-fixer`
 
-### Phase 5: Deep Diagnosis (`--test-fixer`)
-For more complex issues, run the test suite and let the LLM analyze the failures:
+Runs `pytest -v`, captures output, and instructs the LLM to diagnose failures and produce a `FIX_PLAN.md`. Stops with "All tests passed" when the suite is green.
 
 ```bash
-# Run tests and plan fixes for failures
 dumpcode --test-fixer
+```
+
+### `--coverage`
+
+Runs `pytest --cov=src/dumpcode --cov-report=term-missing` and instructs the LLM to plan tests for uncovered lines. Stops cleanly when coverage is already >95%.
+
+```bash
+dumpcode --coverage
+```
+
+### `--refactor`
+
+Reviews the code for SOLID violations, code smells, and structural weaknesses. Instructs the LLM to rank suggestions by impact and avoid over-engineering.
+
+```bash
+dumpcode --refactor
+```
+
+### `--optimize`
+
+Analyses the code for performance bottlenecks: algorithmic complexity, I/O in loops, memory usage. Explicitly avoids micro-optimizations.
+
+```bash
+dumpcode --optimize
 ```
 
 ---
 
-## 🤖 AI Integration (Auto-Mode)
+## AI Integration
 
-DumpCode includes built-in AI integration that can automatically send generated prompts to AI models and **stream their responses directly to your terminal**.
+DumpCode can automatically send the generated prompt to an AI provider and stream the response to your terminal.
 
-### Supported Providers
-*   **Claude (Anthropic):** `claude-sonnet-4-5-20250929`, `claude-opus...`
-*   **Gemini (Google):** `gemini-3-flash`, `gemini-2.5-pro`
-*   **GPT (OpenAI):** `gpt-5.2`, `gpt-4o`, `o1`, `o3`
-*   **DeepSeek:** `deepseek-chat`, `deepseek-reasoner`
+### Supported providers
 
-### Usage Examples
+| Provider | Models | Env var |
+|:---------|:-------|:--------|
+| Anthropic (Claude) | `claude-3-5-sonnet-latest`, `claude-opus-...` | `ANTHROPIC_API_KEY` |
+| Google (Gemini) | `gemini-2.5-pro`, `gemini-2.0-flash` | `GOOGLE_API_KEY` |
+| OpenAI (GPT) | `gpt-4o`, `o1`, `o3` | `OPENAI_API_KEY` |
+| DeepSeek | `deepseek-chat`, `deepseek-reasoner` | `DEEPSEEK_API_KEY` |
+
+### Enabling auto-send
 
 ```bash
-# Auto-send with default model defined in profile
+# Force auto-send for any profile
 dumpcode --cleanup --auto
 
-# Override model for this run
-dumpcode --readme --auto --model gemini-3-flash
+# Override the model for this run
+dumpcode --readme --auto --model gemini-2.5-pro
 
-# Disable auto mode for a profile that has it enabled
-dumpcode --ai-review --no-auto
+# Disable auto-send for a profile that has auto_send: true
+dumpcode --my-profile --no-auto
 ```
 
-### Diagnostic Tools
-Test connectivity to all configured providers:
+Or set `"auto_send": true` in a profile to make it always auto-send when active.
+
+### Testing connectivity
+
 ```bash
 dumpcode --test-models
 ```
 
----
-
-## 🛠 Technical Feature Highlights
-
-### Smart Content Handling
-*   **Truncation:** High-volume files (`.csv`, `.jsonl`, `.log`) are automatically truncated (e.g., first 5-10 lines) to prevent context window saturation.
-*   **Binary Detection:** Heuristic scanning (null-byte detection and extension checking) skips compiled objects, images, and non-text assets.
-*   **Encoding Resilience:** Heuristic detection of UTF-8, UTF-16, and Latin-1.
-
-### Environment Awareness
-*   **OSC52 Clipboard:** Pushes the dump directly to your local clipboard via ANSI escape sequences. This works flawlessly over SSH, inside Docker, or in remote dev containers.
-*   **Git-Native Logic:** Leverages `pathspec` to respect `.gitignore` rules exactly as Git does, including complex negations and nested patterns.
-*   **Token Safety:** Warns at 500k tokens and refuses at 900k tokens to prevent accidental high costs.
+Runs parallel connectivity tests against all providers that have API keys configured, and reports which ones are reachable.
 
 ---
 
-## ⚙️ Installation & Configuration
+## Workflow Guide
 
-### Installation
+### Focused fix: only changed files
 
-#### From GitHub (Recommended)
+When you've edited a few files and want the LLM to review only your changes:
+
 ```bash
-# Basic installation
-pip install git+https://github.com/FloLey/dumpcode.git
-
-# With AI support (all providers)
-pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[ai]"
-
-# With specific AI providers
-pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[claude]"      # Anthropic
-pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[gemini]"      # Google
-pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[openai]"      # OpenAI
-pip install "git+https://github.com/FloLey/dumpcode.git#egg=dumpcode[deepseek]"    # DeepSeek
+dumpcode --changed --cleanup
 ```
 
-#### From Source (Development)
+DumpCode runs the linters against the full project (so you see all errors), but restricts the `<files>` context to only what git reports as modified. The LLM sees the linter errors and the relevant source — nothing more.
+
+### Spec-driven development loop
+
+Use DumpCode to maintain a living `PLAN.md` that drives development:
+
+**Step 1 — Create the spec:**
 ```bash
-# Clone the repository
-git clone https://github.com/FloLey/dumpcode.git
-cd dumpcode
-
-# Install in development mode
-pip install -e .
-
-# Or with AI support
-pip install -e ".[ai]"
+dumpcode --architect -q "Create a specification for a plugin system."
+# Copy the LLM's response
 ```
 
-### Configuration Setup
-
-Initialize your project-specific configuration:
+**Step 2 — Save it:**
 ```bash
-dumpcode --init
+# Paste the Markdown and press Ctrl+D
+dumpcode --new-plan -
 ```
 
-Create a `.env` file for your API keys:
+**Step 3 — Check what's next:**
 ```bash
-ANTHROPIC_API_KEY=sk-ant-xxxxx
-GOOGLE_API_KEY=AIzaSyxxxxx
-OPENAI_API_KEY=sk-xxxxx
-DEEPSEEK_API_KEY=sk-xxxxx
+dumpcode --plan-next
 ```
 
-## 📋 Configuration Reference
+**Step 4 — Implement, then repeat from Step 3.**
 
-### File Location
-DumpCode looks for `.dump_config.json` in your project root. If it doesn't exist, running `dumpcode --init` will create it interactively.
+`--plan-next` marks finished tasks, defines the next milestone, and stops cleanly when the project is complete.
 
-### Schema
+### Ask a one-off question
 
-#### `version` (Integer)
-Auto-increments after each successful dump. Used to track iteration count in the output header. Reset with `--reset-version`.
+Use `-q` to append a custom task without defining a profile:
 
-#### `ignore_patterns` (Array of Strings)
-Glob patterns to exclude from dumps. These are **merged** with your `.gitignore` (if present). Supports:
-- Wildcards: `*.pyc`, `*.log`
-- Directories: `node_modules/`, `venv/`
-- Paths: `src/tests/*.py`
-
-**Note:** `.dump_config.json` itself is always excluded.
-
-#### `use_xml` (Boolean)
-Controls semantic XML wrapping. **Strongly recommended** to keep as `true` for LLM prompts. Disable only if piping output to non-LLM text processors.
-
-#### `profiles` (Object)
-See [Creating Custom Profiles](#-creating-custom-profiles) above.
-
-### Example Configuration
-
-```json
-{
-  "version": 1,
-  "ignore_patterns": [".git", "__pycache__", "node_modules"],
-  "profiles": {
-    "custom-agent": {
-      "description": "Your custom profile",
-      "pre": ["Act as a Rust Expert.", "Analyze memory safety."],
-      "post": "Suggest refactoring for the borrow checker.",
-      "run_commands": ["cargo check"],
-      "model": "claude-3-5-sonnet-latest",
-      "auto_send": true
-    }
-  },
-  "use_xml": true
-}
+```bash
+dumpcode -q "Why does the DumpSession class maintain both tree_entries and files_to_dump?"
+dumpcode --changed -q "Does my change introduce any race conditions?"
 ```
+
+### Limit scope with depth
+
+For large monorepos where you only want to see the top-level structure:
+
+```bash
+dumpcode -L 2 --structure-only
+```
+
+### Modify the config via LLM
+
+If you want to add or change a profile but aren't sure of the JSON syntax:
+
+```bash
+dumpcode --change-profile "Add a profile called 'api-docs' that generates OpenAPI documentation"
+```
+
+This generates a prompt explaining the current config schema and your instruction. Send it to an LLM and paste the result into `.dump_config.json`.
 
 ---
 
-## ⌨️ CLI Reference
+## License
 
-| Flag | Category | Description |
-| :--- | :--- | :--- |
-| `dumpcode` | Basic | Dump current directory to clipboard. |
-| `--init` | Setup | Initialize project config. |
-| `--changed` | Scanning | Only dump git-modified/untracked files. |
-| `-L [N]` | Scanning | Limit tree depth to N levels. |
-| `--structure-only` | Scanning | Show tree but omit file contents. |
-| `-o [file]` | Output | Set output filename (default: `codebase_dump.txt`). |
-| `--no-copy` | Output | Disable OSC52 clipboard copy. |
-| `--new-plan` | Meta | Update `PLAN.md` from stdin. |
-| `--change-profile` | Meta | Generate prompt to modify `.dump_config.json`. |
-| `--auto` | AI | Force auto-send to AI. |
-| `--model [ID]` | AI | Override AI model for this run. |
-
----
-
-## 🧪 How DumpCode Was Built (Recursive Self-Improvement)
-
-DumpCode was created using the exact workflow it implements—a recursive loop where the tool improved itself by being used on its own codebase.
-
-1.  **Initial Problem:** I needed a way to paste code into Gemini reliably, and I was using variations of the same prompts over and over again.
-2.  **The Sandwich:** I realized LLMs hallucinate less when instructions come *before* code and tasks come *after*.
-3.  **Self-Refinement:** Every feature (Git integration, XML tags, Auto-Mode) was added because I needed it while using DumpCode to build DumpCode.
-
-This recursive pattern created a virtuous cycle: DumpCode demonstrates its own value by being the primary tool used to build itself.
-
-### License
-**MIT License** - Copyright © Florent Lejoly
+MIT — Copyright © Florent Lejoly
